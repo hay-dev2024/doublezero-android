@@ -1,0 +1,97 @@
+### 🪟 Windows ###
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+### 🍏 macOS ###
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+### 🐧 Linux ###
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+### 💡 JetBrains / Android Studio ###
+*.iml
+*.ipr
+*.iws
+/.idea/*
+!.idea/.name
+!.idea/codeInsightSettings.xml
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/runConfigurations/
+!.idea/vcs.xml
+
+### ☕ Kotlin / Java ###
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+
+### ⚙️ Gradle ###
+.gradle
+**/build/
+**/captures/
+**/outputs/
+**/generated/
+!gradle/wrapper/gradle-wrapper.jar
+.gradletasknamecache
+gradle-app.setting
+gradle-app.lock
+
+### 🤖 Android Specific ###
+local.properties
+*.jks
+*.keystore
+google-services.json
+app/google-services.json
+.navigation/
+.idea/preview*
+**/kapt/
+**/ksp/
+fastlane/report.xml
+fastlane/screenshots
+crashlytics-build.properties
+*.apk
+*.aab
+
+### 🧩 Compose / Hilt / Temporary ###
+.idea/preview*
+.idea/deploymentTargetDropDown.xml
+**/tmp/
+**/intermediates/
