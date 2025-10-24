@@ -21,4 +21,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "DoubleZero"
 include(":app")
- 
+include(":core")
+include(":feature-splash")
+include(":feature-home")
+include(":feature-mypage")
