@@ -19,7 +19,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DoubleZero"
+rootProject.name = "doublezero-android"
 include(":app")
 include(":core")
 include(":feature-splash")
