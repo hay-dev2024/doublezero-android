@@ -194,7 +194,7 @@ private fun LoginPopupDialog(
         shape = RoundedCornerShape(16.dp), // rounded-2xl
         containerColor = Color.White,
         // 버튼들을 Column으로 쌓기 위해 버튼 레이아웃을 직접 제어
-        // (Material3 기본 AlertDialog는 버튼을 Row로 배치)
+        // Material3 기본 AlertDialog는 버튼을 Row로 배치
     )
 }
 
