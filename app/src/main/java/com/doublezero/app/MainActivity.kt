@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
             DoubleZeroTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     HomeScreen(
+                        onNavigate = { route -> /* TODO: 실제 네비게이션 처리 */ },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
