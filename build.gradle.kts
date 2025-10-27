@@ -4,4 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.android.library) apply false
+
+    // Hilt Gradle Plugin
+    id("com.google.dagger.hilt.android") version "2.46.1" apply false
 }
