@@ -173,7 +173,6 @@ private fun TripItem(
     val riskStyle = getRiskColor(trip.risk) // core 모듈 유틸리티 사용
     val cornerShape = RoundedCornerShape(12.dp) //
 
-    // React의 Card div
     Card(
         shape = cornerShape,
         colors = CardDefaults.cardColors(containerColor = Color.White),

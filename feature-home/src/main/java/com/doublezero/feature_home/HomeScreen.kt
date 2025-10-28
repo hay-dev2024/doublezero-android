@@ -171,9 +171,9 @@ private fun SearchBottomSheet(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = tween(300)),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp), // rounded-t-3xl
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = Color.White,
-        shadowElevation = 8.dp // shadow-2xl
+        shadowElevation = 8.dp
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -435,7 +435,7 @@ private fun SearchInput(
     )
 }
 
- // Result Card
+// Result Card
 @Composable
 private fun RouteSummaryCard(onConfirmRoute: () -> Unit) {
     Card(
@@ -570,8 +570,6 @@ private fun HomeScreenPreview() {
 @Composable
 private fun HomeScreenSearchOpenPreview() {
     MaterialTheme {
-        // 'isSearchOpen' 상태를 직접 제어할 수 없으므로,
-        // 프리뷰용 Composable을 만들거나, SearchBottomSheet만 따로 프리뷰합니다.
         SearchBottomSheet(
             isSearchOpen = true,
             origin = "Seoul Station",

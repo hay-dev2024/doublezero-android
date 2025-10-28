@@ -44,7 +44,7 @@ class MyPageViewModel : ViewModel() {
     fun onLogout() {
         viewModelScope.launch {
             _uiState.update {
-                // 로그인 상태와 유저 정보를 초기화합니다.
+                // 로그인 상태와 유저 정보를 초기화
                 it.copy(
                     isLoggedIn = false,
                     userProfile = UserProfile()
