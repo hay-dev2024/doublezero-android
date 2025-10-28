@@ -21,7 +21,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "doublezero-android"
 include(":app")
-include(":core")
-include(":feature-splash")
-include(":feature-home")
-include(":feature-mypage")
+include(":shared")
+include(":features:feature-home")
+include(":features:feature-mypage")
+include(":features")
+include(":data")
+include(":features:feature-entry")

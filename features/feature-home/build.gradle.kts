@@ -2,13 +2,10 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-
-    id("com.google.dagger.hilt.android")
-    kotlin("kapt")
 }
 
 android {
-    namespace = "com.doublezero.feature_mypage"
+    namespace = "com.doublezero.feature_home"
     compileSdk {
         version = release(36)
     }
@@ -45,35 +42,22 @@ android {
 }
 
 dependencies {
-    implementation(project(":core"))
-
-    implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.material:material-icons-extended")
 
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-
     implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.ui)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-
-    // Coil Compose 이미지 로더
-    implementation("io.coil-kt:coil-compose:2.4.0")
-
-    // Hilt
-    implementation("com.google.dagger:hilt-android:2.56")
-//    kapt("com.google.dagger:hilt-compiler:2.56")
-    kapt("com.google.dagger:hilt-android-compiler:2.56")
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.ui.tooling)
 }

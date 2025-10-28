@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.doublezero.feature_splash"
+    namespace = "com.doublezero.data"
     compileSdk {
         version = release(36)
     }
@@ -26,16 +26,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "21"
+        jvmTarget = "11"
     }
 }
 
 dependencies {
-    implementation(project(":shared"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
