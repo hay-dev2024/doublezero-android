@@ -81,7 +81,6 @@ fun HomeScreen(
 
     fun handleCloseSheet() {
         isSearchOpen = false
-        // TODO: React 코드처럼 300ms 딜레이 후 상태 초기화가 필요하다면 Coroutine/LaunchedEffect 사용
         showResult = false
         origin = ""
         destination = ""
