@@ -6,5 +6,5 @@ plugins {
     alias(libs.plugins.android.library) apply false
 
     // Hilt Gradle Plugin
-    id("com.google.dagger.hilt.android") version "2.46.1" apply false
+    id("com.google.dagger.hilt.android") version "2.56" apply false
 }
