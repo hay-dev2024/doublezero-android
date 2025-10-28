@@ -2,22 +2,14 @@ package com.doublezero.feature_mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.doublezero.feature_mypage.uistate.MyPageUiState
+import com.doublezero.feature_mypage.uistate.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// data class
-data class UserProfile(
-    val name: String = "",
-    val photoUrl: String = ""
-)
 
-// ViewModel이 관리할 전체 UI 상태
-data class MyPageUiState(
-    val isLoggedIn: Boolean = false,
-    val userProfile: UserProfile = UserProfile()
-)
 
 class MyPageViewModel : ViewModel() {
 

@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.doublezero.core.ui.components.DoubleZeroBottomNav
+import com.doublezero.feature_mypage.uistate.UserProfile
 
 
 @OptIn(ExperimentalMaterial3Api::class)
