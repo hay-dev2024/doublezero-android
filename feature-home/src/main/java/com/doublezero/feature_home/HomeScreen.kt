@@ -90,9 +90,6 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            // TODO: 아래 DoubleZeroBottomNav의 주석을 해제하고
-            //       'core' 모듈에 실제 컴포넌트를 생성해야 합니다.
-
             DoubleZeroBottomNav(
                 activeTab = "home",
                 onNavigate = onNavigate,
@@ -100,7 +97,6 @@ fun HomeScreen(
             )
 
             // --- 임시 BottomNavigation (프리뷰 및 테스트용) ---
-            // TODO: 'core' 모듈에 BottomNav.kt 생성 후 이 부분을 삭제하고 위 코드로 대체하세요.
 //            MockBottomNav(
 //                activeTab = "home",
 //                onNavigate = onNavigate,
