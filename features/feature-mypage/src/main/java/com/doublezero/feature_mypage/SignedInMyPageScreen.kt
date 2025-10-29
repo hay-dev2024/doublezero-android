@@ -2,16 +2,7 @@ package com.doublezero.feature_mypage
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.* // Import everything from layout
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,15 +11,12 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Settings
+// Import only necessary Material 3 components
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,96 +28,78 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.doublezero.core.ui.components.DoubleZeroBottomNav
+import coil.compose.AsyncImage // Coil image loader
 import com.doublezero.feature_mypage.uistate.UserProfile
 
+// No Scaffold imports needed
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * MyPageLoggedIn.tsx converted Composable.
+ * Scaffold is completely removed, relying on MainActivity's Scaffold.
+ */
 @Composable
 fun SignedInMyPageScreen(
-    userProfile: UserProfile,
-    onLogout: () -> Unit,
+    userProfile: UserProfile, // Provided by MyPageScreen (from ViewModel)
+    onLogout: () -> Unit, // Provided by MyPageScreen (from ViewModel)
+    // Navigation callbacks provided by MyPageScreen
     onNavigateToHistory: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToHome: () -> Unit,
-    onSearchClick: () -> Unit
+    onNavigateToSettings: () -> Unit
+    // Removed onNavigateToHome and onSearchClick parameters
 ) {
-    Scaffold(
-        containerColor = Color(0xFFF8F9FA),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "My Page",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color(0xFF212121)
-                )
-            )
-        },
-        bottomBar = {
-             DoubleZeroBottomNav(
-                 activeTab = "mypage",
-                 onNavigate = { if (it == "home") onNavigateToHome() else if (it == "mypage") { /* no-op */ } },
-                 onSearchClick = onSearchClick
-             )
+    // Removed the Scaffold wrapper.
+    // Padding from MainActivity's Scaffold (passed via NavHost modifier) handles Top/Bottom bars.
 
-            // 임시 Mock Bottom Nav
-//            com.doublezero.feature_home.MockBottomNav(
-//                activeTab = "mypage",
-//                onNavigate = { if (it == "home") onNavigateToHome() },
-//                onSearchClick = onSearchClick
-//            )
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            // Apply the background color here
+            .background(Color(0xFFF8F9FA))
+            // The padding from MainActivity's Scaffold (containing TopAppBar and BottomAppBar)
+            // is applied to the NavHost, which passes it down via its modifier.
+            // This LazyColumn fills the space *within* those paddings.
+            // Apply additional content padding specific to this screen.
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            UserProfileHeader(userProfile = userProfile)
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // User Profile Header
-            item {
-                UserProfileHeader(userProfile = userProfile)
-            }
-
-            // Menu Buttons
-            item {
-                MenuButton(
-                    text = "Driving History",
-                    icon = Icons.Default.DirectionsCar,
-                    iconBgColor = Color(0xFFE3F2FD),
-                    iconTint = Color(0xFF2196F3),
-                    onClick = onNavigateToHistory
-                )
-            }
-            item {
-                MenuButton(
-                    text = "Settings",
-                    icon = Icons.Default.Settings,
-                    iconBgColor = Color(0xFFFFF3E0),
-                    iconTint = Color(0xFFFF9800),
-                    onClick = onNavigateToSettings
-                )
-            }
-            item {
-                MenuButton(
-                    text = "Logout",
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    iconBgColor = Color(0xFFFFEBEE),
-                    iconTint = Color(0xFFF44336),
-                    onClick = onLogout
-                )
-            }
+        item {
+            MenuButton(
+                text = "Driving History",
+                icon = Icons.Default.DirectionsCar,
+                iconBgColor = Color(0xFFE3F2FD),
+                iconTint = Color(0xFF2196F3),
+                onClick = onNavigateToHistory
+            )
+        }
+        item {
+            MenuButton(
+                text = "Settings",
+                icon = Icons.Default.Settings,
+                iconBgColor = Color(0xFFFFF3E0),
+                iconTint = Color(0xFFFF9800),
+                onClick = onNavigateToSettings
+            )
+        }
+        item {
+            MenuButton(
+                text = "Logout",
+                icon = Icons.AutoMirrored.Filled.Logout,
+                iconBgColor = Color(0xFFFFEBEE),
+                iconTint = Color(0xFFF44336),
+                onClick = onLogout
+            )
+        }
+        // Add Spacer for bottom padding if content might be short
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
+
+// --- Helper Composables (UserProfileHeader, MenuButton) ---
+// --- remain unchanged. They do not contain Scaffold. ---
 
 @Composable
 private fun UserProfileHeader(userProfile: UserProfile) {
@@ -144,7 +114,6 @@ private fun UserProfileHeader(userProfile: UserProfile) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Coil의 AsyncImage
             AsyncImage(
                 model = userProfile.photoUrl,
                 contentDescription = userProfile.name,
@@ -152,12 +121,12 @@ private fun UserProfileHeader(userProfile: UserProfile) {
                     .size(64.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
-                // TODO: placeholder(R.drawable.ic_default_profile) 추가 예정
+                // placeholder(...) recommended
             )
             Column {
                 Text(userProfile.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "john.doe@gmail.com", // mock email
+                    "john.doe@gmail.com", // Mock email
                     fontSize = 14.sp,
                     color = Color(0xFF757575),
                     modifier = Modifier.padding(top = 2.dp)
@@ -216,13 +185,12 @@ private fun MenuButton(
 @Composable
 private fun SignedInMyPageScreenPreview() {
     MaterialTheme {
+        // Preview still works without Scaffold
         SignedInMyPageScreen(
             userProfile = UserProfile("John Doe", ""),
             onLogout = {},
             onNavigateToHistory = {},
-            onNavigateToSettings = {},
-            onNavigateToHome = {},
-            onSearchClick = {}
+            onNavigateToSettings = {}
         )
     }
 }

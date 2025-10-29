@@ -7,20 +7,21 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable // Keep if needed by dropdowns etc.
+import androidx.compose.foundation.layout.* // Keep layout imports
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+// Keep necessary Material Icons imports
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Info // AlertCircle 대체
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Speed // Gauge 대체
+import androidx.compose.material.icons.filled.VolumeUp // Volume2 대체
+// Import only necessary Material 3 components
+import androidx.compose.material3.* // Keep M3 imports
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,132 +34,117 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // Needed for ExposedDropdownMenuBox
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
+    // onBackClicked is provided by NavHost, used by TopAppBar in MainActivity
     onBackClicked: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
-    Scaffold(
-        containerColor = Color(0xFFF8F9FA),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClicked) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color(0xFF212121)
-                )
-            )
-        }
-        // BottomBar 없음
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
+    // Removed the Scaffold wrapper.
+    // Box provides a scope for alignment (like for the toast).
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // Apply the background color here
+            .background(Color(0xFFF8F9FA))
+        // Padding from MainActivity's Scaffold is handled by NavHost modifier.
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                // Apply additional content padding specific to this screen.
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .verticalScroll(scrollState)
+        ) {
+            // Settings Cards
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 20.dp, vertical = 24.dp)
-                    .verticalScroll(scrollState)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(bottom = 24.dp)
             ) {
-                // Settings Cards
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(bottom = 24.dp)
-                ) {
-                    SettingSwitchItem(
-                        icon = Icons.Default.VolumeUp,
-                        iconBgColor = Color(0xFFE3F2FD),
-                        iconTint = Color(0xFF2196F3),
-                        title = "TTS Voice Guidance",
-                        description = "Enable voice navigation alerts",
-                        checked = uiState.ttsEnabled,
-                        onCheckedChange = viewModel::setTtsEnabled
-                    )
-                    SettingSwitchItem(
-                        icon = Icons.Default.Info,
-                        iconBgColor = Color(0xFFFFF3E0),
-                        iconTint = Color(0xFFFF9800),
-                        title = "AI Risk Display",
-                        description = "Show real-time risk indicators",
-                        checked = uiState.riskDisplayEnabled,
-                        onCheckedChange = viewModel::setRiskDisplayEnabled
-                    )
-                    SettingDropdownItem(
-                        icon = Icons.Default.Speed,
-                        iconBgColor = Color(0xFFE8F5E9),
-                        iconTint = Color(0xFF4CAF50),
-                        title = "Speed Unit",
-                        description = "Choose your preferred speed measurement",
-                        selectedUnit = uiState.selectedSpeedUnit,
-                        onUnitSelected = viewModel::setSelectedSpeedUnit
-                    )
-                }
-
-                // Save Button
-                Button(
-                    onClick = viewModel::saveSettings,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(vertical = 14.dp)
-                ) {
-                    Text("Save Settings", fontWeight = FontWeight.SemiBold)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp)) // 버튼 하단 여백 추가
+                SettingSwitchItem(
+                    icon = Icons.Default.VolumeUp,
+                    iconBgColor = Color(0xFFE3F2FD),
+                    iconTint = Color(0xFF2196F3),
+                    title = "TTS Voice Guidance",
+                    description = "Enable voice navigation alerts",
+                    checked = uiState.ttsEnabled,
+                    onCheckedChange = viewModel::setTtsEnabled
+                )
+                SettingSwitchItem(
+                    icon = Icons.Default.Info,
+                    iconBgColor = Color(0xFFFFF3E0),
+                    iconTint = Color(0xFFFF9800),
+                    title = "AI Risk Display",
+                    description = "Show real-time risk indicators",
+                    checked = uiState.riskDisplayEnabled,
+                    onCheckedChange = viewModel::setRiskDisplayEnabled
+                )
+                SettingDropdownItem(
+                    icon = Icons.Default.Speed,
+                    iconBgColor = Color(0xFFE8F5E9),
+                    iconTint = Color(0xFF4CAF50),
+                    title = "Speed Unit",
+                    description = "Choose your preferred speed measurement",
+                    selectedUnit = uiState.selectedSpeedUnit,
+                    onUnitSelected = viewModel::setSelectedSpeedUnit
+                )
             }
 
-            // Save Confirmation Toast
-            AnimatedVisibility(
-                visible = uiState.showSavedConfirmation,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 80.dp),
-                enter = fadeIn(tween(300)) + slideInVertically(tween(300)),
-                exit = fadeOut(tween(300)) + slideOutVertically(tween(300))
+            // Save Button
+            Button(
+                onClick = viewModel::saveSettings,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 14.dp)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF4CAF50),
-                    contentColor = Color.White,
-                    shadowElevation = 4.dp
+                Text("Save Settings", fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(modifier = Modifier.height(20.dp)) // Bottom padding after button
+        }
+
+        // Save Confirmation Toast - Aligned within the parent Box
+        AnimatedVisibility(
+            visible = uiState.showSavedConfirmation,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                // Adjust top padding considering potential TopAppBar height from MainActivity
+                .padding(top = 16.dp), // Reduced padding assuming TopAppBar pushes content down
+            enter = fadeIn(tween(300)) + slideInVertically(tween(300)),
+            exit = fadeOut(tween(300)) + slideOutVertically(tween(300))
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF4CAF50),
+                contentColor = Color.White,
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Settings saved", fontWeight = FontWeight.SemiBold)
-                    }
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Settings saved", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 }
 
-// 설정 항목 Card
+// --- Helper Composables (SettingCard, SettingSwitchItem, SettingDropdownItem) ---
+// --- remain unchanged from the previous version. ---
+// --- They do not contain Scaffold. ---
+
 @Composable
 private fun SettingCard(
     icon: ImageVector,
@@ -166,7 +152,7 @@ private fun SettingCard(
     iconTint: Color,
     title: String,
     description: String,
-    content: @Composable RowScope.() -> Unit = {} // 스위치나 드롭다운 들어갈 자리
+    content: @Composable RowScope.() -> Unit = {}
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -180,7 +166,6 @@ private fun SettingCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -195,7 +180,6 @@ private fun SettingCard(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            // Title & Description
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold)
                 Text(
@@ -205,7 +189,6 @@ private fun SettingCard(
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
-            // Switch or Dropdown Content
             content()
         }
     }
@@ -228,7 +211,6 @@ private fun SettingSwitchItem(
         title = title,
         description = description
     ) {
-        // Material3 Switch
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -267,7 +249,6 @@ private fun SettingDropdownItem(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -283,7 +264,6 @@ private fun SettingDropdownItem(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            // Title, Description, Dropdown
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
                 Text(
@@ -299,12 +279,12 @@ private fun SettingDropdownItem(
                 ) {
                     OutlinedTextField(
                         value = selectedUnit.displayName,
-                        onValueChange = {}, // 읽기 전용
+                        onValueChange = {},
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(), // 드롭다운 메뉴 위치 기준점
+                            .menuAnchor(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
                             focusedContainerColor = Color(0xFFF8F9FA),
@@ -333,12 +313,14 @@ private fun SettingDropdownItem(
     }
 }
 
+
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun SettingsScreenPreview() {
     MaterialTheme {
+        // Preview still works without Scaffold, showing just the settings content
         SettingsScreen(
-            viewModel = SettingsViewModel(), // Preview용 임시 ViewModel
+            viewModel = SettingsViewModel(), // Use temporary ViewModel for preview
             onBackClicked = {}
         )
     }
