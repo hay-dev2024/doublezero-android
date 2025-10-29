@@ -171,7 +171,7 @@ fun SplashScreen(
                 CarSvg(modifier = Modifier.size(width = 200.dp, height = 100.dp)) // SVG 크기
                 // 바퀴 (CarSvg 내부 좌표 기준으로 배치)
                 CarWheel(modifier = Modifier.offset(x = 33.dp, y = 75.dp - 8.dp))
-                CarWheel(modifier = Modifier.offset(x = 200.dp - 33.dp - 40.dp, y = 75.dp - 8.dp)) )
+                CarWheel(modifier = Modifier.offset(x = 200.dp - 33.dp - 40.dp, y = 75.dp - 8.dp))
             }
 
             // DoubleZero 로고 + 부제 (offset과 alpha 적용)
