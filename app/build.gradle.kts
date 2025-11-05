@@ -3,20 +3,18 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.hilt.android)
     kotlin("kapt")
 }
 
 android {
     namespace = "com.doublezero.app"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.doublezero.app"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 
@@ -50,8 +48,8 @@ dependencies {
     implementation(project(":features:feature-mypage"))
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.56")
-    kapt("com.google.dagger:hilt-compiler:2.56")
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
 
     // Hilt + Compose navigation helpers
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")

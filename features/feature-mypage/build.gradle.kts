@@ -3,7 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.hilt.android)
     kotlin("kapt")
 }
 
@@ -39,9 +39,6 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.7"
-    }
 }
 
 dependencies {
@@ -66,9 +63,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.4.0")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.56")
-//    kapt("com.google.dagger:hilt-compiler:2.56")
-    kapt("com.google.dagger:hilt-android-compiler:2.56")
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
 
     testImplementation(libs.junit)
