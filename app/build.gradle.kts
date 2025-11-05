@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 
     alias(libs.plugins.hilt.android)
     kotlin("kapt")
@@ -47,13 +48,15 @@ dependencies {
     implementation(project(":features:feature-home"))
     implementation(project(":features:feature-mypage"))
 
+    implementation(libs.androidx.navigation.serialization)
+    implementation(libs.kotlinx.serialization.json)
+
     // Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
 
     // Hilt + Compose navigation helpers
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
