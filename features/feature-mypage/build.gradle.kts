@@ -4,8 +4,9 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 
-    alias(libs.plugins.hilt.android)
-    kotlin("kapt")
+    alias(libs.plugins.hilt.gradle)
+    alias(libs.plugins.google.ksp)
+
 }
 
 android {
@@ -34,42 +35,32 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-    kotlinOptions {
-        jvmTarget = "21"
-    }
     buildFeatures {
         compose = true
     }
 }
-
+kotlin{
+    jvmToolchain(21)
+}
 dependencies {
 
     implementation(project(":shared"))
-    implementation(platform(libs.androidx.compose.bom))
-    implementation("androidx.compose.material:material-icons-extended")
-
-    implementation(libs.androidx.navigation.serialization)
-    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
+    implementation(libs.kotlinx.serialization.json)
 
-    implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(platform(libs.androidx.compose.bom))
+
+    implementation(libs.bundles.compose.libraries)
 
     // Coil Compose 이미지 로더
-    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation(libs.coil.compose)
 
-    // Hilt
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    implementation(libs.androidx.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

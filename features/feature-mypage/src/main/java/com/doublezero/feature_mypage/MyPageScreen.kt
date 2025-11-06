@@ -3,7 +3,7 @@ package com.doublezero.feature_mypage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /**
  * MyPage feature의 메인 엔트리 스크린.
@@ -22,6 +22,7 @@ fun MyPageScreen(
 ) {
     // ViewModel의 UI 상태 관찰
     val uiState by viewModel.uiState.collectAsState()
+
 
     // 로그인 상태에 따라 올바른 화면 표시
     if (uiState.isLoggedIn) {
