@@ -155,7 +155,7 @@ private fun AppNavHost(
     NavHost(
         navController = navController,
         startDestination = ROUTE_SPLASH,
-        modifier = modifier // Apply padding from the parent Scaffold
+        modifier = modifier
     ) {
         composable(ROUTE_SPLASH) {
             SplashScreen(
