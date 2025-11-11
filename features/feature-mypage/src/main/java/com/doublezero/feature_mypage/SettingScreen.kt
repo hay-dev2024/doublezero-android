@@ -1,5 +1,6 @@
 package com.doublezero.feature_mypage
 
+import com.doublezero.core.ui.color.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -67,8 +68,8 @@ fun SettingsScreen(
             ) {
                 SettingSwitchItem(
                     icon = Icons.Default.VolumeUp,
-                    iconBgColor = Color(0xFFE3F2FD),
-                    iconTint = Color(0xFF2196F3),
+                    iconBgColor = BlueishWhite,
+                    iconTint = Blue,
                     title = "TTS Voice Guidance",
                     description = "Enable voice navigation alerts",
                     checked = uiState.ttsEnabled,
@@ -98,7 +99,7 @@ fun SettingsScreen(
             Button(
                 onClick = viewModel::saveSettings,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(vertical = 14.dp)
             ) {
@@ -185,7 +186,7 @@ private fun SettingCard(
                 Text(
                     description,
                     fontSize = 13.sp,
-                    color = Color(0xFF757575),
+                    color = Grey,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -216,9 +217,9 @@ private fun SettingSwitchItem(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF2196F3),
+                checkedTrackColor = Blue,
                 uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = Color(0xFFE0E0E0)
+                uncheckedTrackColor = LightGrey
             )
         )
     }
@@ -269,7 +270,7 @@ private fun SettingDropdownItem(
                 Text(
                     description,
                     fontSize = 13.sp,
-                    color = Color(0xFF757575),
+                    color = Grey,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
@@ -287,10 +288,10 @@ private fun SettingDropdownItem(
                             .menuAnchor(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                            focusedContainerColor = Color(0xFFF8F9FA),
-                            unfocusedContainerColor = Color(0xFFF8F9FA),
-                            focusedBorderColor = Color(0xFF2196F3),
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
+                            focusedContainerColor = BrightWhite,
+                            unfocusedContainerColor = BrightWhite,
+                            focusedBorderColor = Blue,
+                            unfocusedBorderColor = LightGrey
                         )
                     )
                     ExposedDropdownMenu(

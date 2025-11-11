@@ -1,5 +1,6 @@
 package com.doublezero.feature_mypage
 
+import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.* // Import everything from layout
@@ -52,12 +53,7 @@ fun SignedInMyPageScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            // Apply the background color here
-            .background(Color(0xFFF8F9FA))
-            // The padding from MainActivity's Scaffold (containing TopAppBar and BottomAppBar)
-            // is applied to the NavHost, which passes it down via its modifier.
-            // This LazyColumn fills the space *within* those paddings.
-            // Apply additional content padding specific to this screen.
+            .background(BrightWhite)
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -68,8 +64,8 @@ fun SignedInMyPageScreen(
             MenuButton(
                 text = "Driving History",
                 icon = Icons.Default.DirectionsCar,
-                iconBgColor = Color(0xFFE3F2FD),
-                iconTint = Color(0xFF2196F3),
+                iconBgColor = BlueishWhite,
+                iconTint = Blue,
                 onClick = onNavigateToHistory
             )
         }
@@ -77,8 +73,8 @@ fun SignedInMyPageScreen(
             MenuButton(
                 text = "Settings",
                 icon = Icons.Default.Settings,
-                iconBgColor = Color(0xFFFFF3E0),
-                iconTint = Color(0xFFFF9800),
+                iconBgColor = WarmishWhite,
+                iconTint = Orange,
                 onClick = onNavigateToSettings
             )
         }
@@ -86,8 +82,8 @@ fun SignedInMyPageScreen(
             MenuButton(
                 text = "Logout",
                 icon = Icons.AutoMirrored.Filled.Logout,
-                iconBgColor = Color(0xFFFFEBEE),
-                iconTint = Color(0xFFF44336),
+                iconBgColor = ReddishWhite,
+                iconTint = Red,
                 onClick = onLogout
             )
         }
@@ -126,9 +122,9 @@ private fun UserProfileHeader(userProfile: UserProfile) {
             Column {
                 Text(userProfile.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "john.doe@gmail.com", // Mock email
+                    "john.doe@gmail.com",
                     fontSize = 14.sp,
-                    color = Color(0xFF757575),
+                    color = Grey,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -175,7 +171,7 @@ private fun MenuButton(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color(0xFF9E9E9E)
+                tint = SomewhatGrey
             )
         }
     }

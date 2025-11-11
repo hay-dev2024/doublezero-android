@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.layout.* // Keep layout imports
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -63,12 +64,7 @@ fun HistoryScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            // Apply the background color here
-            .background(Color(0xFFF8F9FA))
-            // The padding from MainActivity's Scaffold (containing TopAppBar and BottomAppBar)
-            // is applied to the NavHost, which passes it down via its modifier.
-            // This LazyColumn fills the space *within* those paddings.
-            // Apply additional content padding specific to this screen.
+            .background(BrightWhite)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -120,7 +116,7 @@ private fun TripItem(
                 Text(
                     text = "${trip.date} · ${trip.time}",
                     fontSize = 14.sp,
-                    color = Color(0xFF757575)
+                    color = Grey
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -143,7 +139,7 @@ private fun TripItem(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
                         modifier = Modifier.size(20.dp),
-                        tint = Color(0xFF9E9E9E)
+                        tint = SomewhatGrey
                     )
                 }
             }
@@ -155,12 +151,12 @@ private fun TripItem(
                 RouteInfoRow(
                     icon = Icons.Default.LocationOn,
                     text = trip.origin,
-                    iconTint = Color(0xFF4CAF50)
+                    iconTint = DarkGreen
                 )
                 RouteInfoRow(
                     icon = Icons.Default.LocationOn,
                     text = trip.destination,
-                    iconTint = Color(0xFFF44336)
+                    iconTint = Red
                 )
             }
 
@@ -204,7 +200,7 @@ private fun TripItem(
                     Text(
                         text = "AI Risk Summary",
                         fontSize = 12.sp,
-                        color = Color(0xFF757575)
+                        color = Grey
                     )
                     Text(
                         text = trip.riskDetails,
@@ -242,10 +238,10 @@ private fun StatInfoRow(icon: ImageVector, text: String) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFF757575),
+            tint = Grey,
             modifier = Modifier.size(16.dp)
         )
-        Text(text = text, fontSize = 13.sp, color = Color(0xFF757575))
+        Text(text = text, fontSize = 13.sp, color = Grey)
     }
 }
 

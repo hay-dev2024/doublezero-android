@@ -1,6 +1,6 @@
 package com.doublezero.feature_home.entry
 
-
+import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +51,7 @@ fun SplashScreen(
             )
             Text(
                 text = "AI-Powered Navigation",
-                color = Color(0xFF2196F3),
+                color = Blue,
                 modifier = Modifier.padding(top = 8.dp)
             )
         }

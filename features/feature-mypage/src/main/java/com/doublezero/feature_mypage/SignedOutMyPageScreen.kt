@@ -1,5 +1,6 @@
 package com.doublezero.feature_mypage
 
+import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.* // Import everything from layout
@@ -38,10 +39,7 @@ fun SignedOutMyPageScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Apply the background color here
-            .background(Color(0xFFF8F9FA))
-            // The padding from MainActivity's Scaffold is applied by NavHost.
-            // Apply additional content padding specific to this screen.
+            .background(BrightWhite)
             .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -49,26 +47,25 @@ fun SignedOutMyPageScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Placeholder Icon
             Box(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE0E0E0)),
+                    .background(LightGrey),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
                     modifier = Modifier.size(40.dp),
-                    tint = Color(0xFF9E9E9E)
+                    tint = SomewhatGrey
                 )
             }
             Spacer(Modifier.height(24.dp))
 
             Text(
                 text = "Please sign in to access your profile",
-                color = Color(0xFF757575),
+                color = Grey,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
@@ -77,11 +74,10 @@ fun SignedOutMyPageScreen(
                 onClick = { showLoginPopup = true },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                border = BorderStroke(1.dp, LightGrey),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
             ) {
-                // TODO: Replace 'G' with actual Google logo resource
-                Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.ExtraBold)
+                Text("G", color = Blue, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = "Sign in with Google",
@@ -118,7 +114,7 @@ private fun LoginPopupDialog(
             Button(
                 onClick = onConfirmLogin,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Continue as John Doe", fontWeight = FontWeight.SemiBold)
@@ -129,7 +125,7 @@ private fun LoginPopupDialog(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+                border = BorderStroke(1.dp, LightGrey)
             ) {
                 Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
             }
@@ -141,7 +137,7 @@ private fun LoginPopupDialog(
             Text(
                 "Choose an account to continue to DoubleZero",
                 fontSize = 14.sp,
-                color = Color(0xFF757575)
+                color = Grey
             )
         },
         shape = RoundedCornerShape(16.dp),

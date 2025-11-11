@@ -1,6 +1,7 @@
 package com.doublezero.feature_home
 
 import androidx.compose.animation.AnimatedVisibility
+import com.doublezero.core.ui.color.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -119,7 +120,7 @@ fun HomeScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         IconButton(onClick = { handleCloseSheet() }) {
-                            Icon(Icons.Default.Close, "Close", tint = Color(0xFF757575))
+                            Icon(Icons.Default.Close, "Close", tint = Grey)
                         }
                     }
 
@@ -153,9 +154,9 @@ private fun InfoCardsRow(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        InfoCard(Modifier.weight(1f), Icons.Default.Speed, Color(0xFF2196F3), "Speed", "0 km/h", bgColor = Color(0xFFF8F9FA))
-        InfoCard(Modifier.weight(1f), Icons.Default.Cloud, Color(0xFF2196F3), "Weather", "Clear", bgColor = Color(0xFFF8F9FA))
-        InfoCard(Modifier.weight(1f), Icons.Default.Warning, Color(0xFF4CAF50), "Risk", "Safe", Color(0xFF4CAF50), Color(0xFFE8F5E9))
+        InfoCard(Modifier.weight(1f), Icons.Default.Speed, Blue, "Speed", "0 km/h", bgColor = BrightWhite)
+        InfoCard(Modifier.weight(1f), Icons.Default.Cloud, Blue, "Weather", "Clear", bgColor = BrightWhite)
+        InfoCard(Modifier.weight(1f), Icons.Default.Warning, DarkGreen, "Risk", "Safe", DarkGreen, GreenishGrey)
     }
 }
 
@@ -170,7 +171,7 @@ private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint:
     ) {
         Icon(icon, label, tint = iconTint, modifier = Modifier.size(20.dp))
         Spacer(Modifier.height(4.dp))
-        Text(label, fontSize = 11.sp, color = Color(0xFF757575))
+        Text(label, fontSize = 11.sp, color = Grey)
         Spacer(Modifier.height(2.dp))
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
     }
@@ -180,10 +181,10 @@ private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint:
 private fun SearchForm(origin: String, destination: String, showResult: Boolean, onOriginChange: (String) -> Unit, onDestinationChange: (String) -> Unit, onFindRoute: () -> Unit, onConfirmRoute: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 24.dp)) {
-            SearchInput(origin, onOriginChange, "Origin", Icons.Default.LocationOn, Color(0xFF4CAF50))
-            SearchInput(destination, onDestinationChange, "Destination", Icons.Default.LocationOn, Color(0xFFF44336))
+            SearchInput(origin, onOriginChange, "Origin", Icons.Default.LocationOn, DarkGreen)
+            SearchInput(destination, onDestinationChange, "Destination", Icons.Default.LocationOn, Red)
         }
-        Button(onFindRoute, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+        Button(onFindRoute, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
             Icon(Icons.Default.Search, null, Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text("Find Route", fontWeight = FontWeight.SemiBold)
@@ -210,7 +211,7 @@ private fun SearchInput(value: String, onValueChange: (String) -> Unit, placehol
         shape = RoundedCornerShape(12.dp),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
-            focusedIndicatorColor = Color(0xFF2196F3), unfocusedIndicatorColor = Color(0xFFE0E0E0),
+            focusedIndicatorColor = Blue, unfocusedIndicatorColor = LightGrey,
         )
     )
 }
@@ -220,16 +221,16 @@ private fun RouteSummaryCard(onConfirmRoute: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+        colors = CardDefaults.cardColors(containerColor = BrightWhite),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Route Summary", fontWeight = FontWeight.SemiBold)
-            RouteSummaryInfoRow(Icons.Default.Schedule, Color(0xFFE3F2FD), Color(0xFF2196F3), "Estimated Arrival", "25 minutes")
-            RouteSummaryInfoRow(Icons.Default.Map, Color(0xFFE3F2FD), Color(0xFF2196F3), "Total Distance", "12.5 km")
-            RouteSummaryInfoRow(Icons.Default.CheckCircle, Color(0xFFE8F5E9), Color(0xFF4CAF50), "AI Risk Assessment", "Safe Route ✓", Color(0xFF4CAF50))
+            RouteSummaryInfoRow(Icons.Default.Schedule, BlueishWhite, Blue, "Estimated Arrival", "25 minutes")
+            RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", "12.5 km")
+            RouteSummaryInfoRow(Icons.Default.CheckCircle, GreenishGrey, DarkGreen, "AI Risk Assessment", "Safe Route ✓", DarkGreen)
             Spacer(Modifier.height(4.dp))
-            Button(onConfirmRoute, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+            Button(onConfirmRoute, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
                 Text("Confirm Route", fontWeight = FontWeight.SemiBold)
             }
         }
@@ -243,7 +244,7 @@ private fun RouteSummaryInfoRow(icon: ImageVector, iconBgColor: Color, iconTint:
             Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Column {
-            Text(label, fontSize = 12.sp, color = Color(0xFF757575))
+            Text(label, fontSize = 12.sp, color = Grey)
             Text(value, fontWeight = FontWeight.SemiBold, color = valueColor)
         }
     }
@@ -251,12 +252,12 @@ private fun RouteSummaryInfoRow(icon: ImageVector, iconBgColor: Color, iconTint:
 
 @Composable
 private fun MapPlaceholder(modifier: Modifier = Modifier) {
-    val gradient = Brush.verticalGradient(listOf(Color(0xFFE8F5E9), Color(0xFFE3F2FD)))
+    val gradient = Brush.verticalGradient(listOf(GreenishGrey, BlueishWhite))
     Box(modifier = modifier.background(gradient), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Navigation, null, Modifier.size(64.dp).alpha(0.4f), tint = Color(0xFF9E9E9E))
-            Text("Map View", color = Color(0xFF9E9E9E), fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
-            Text("Google Maps SDK Integration", color = Color(0xFF9E9E9E), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+            Icon(Icons.Default.Navigation, null, Modifier.size(64.dp).alpha(0.4f), tint = SomewhatGrey)
+            Text("Map View", color = SomewhatGrey, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+            Text("Google Maps SDK Integration", color = SomewhatGrey, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

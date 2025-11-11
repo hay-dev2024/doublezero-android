@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import com.doublezero.core.ui.color.Blue
+import com.doublezero.core.ui.color.Grey
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -56,7 +58,7 @@ fun DoubleZeroBottomNav(
         ) {
             navItems.forEach { item ->
                 val isActive = activeTab == item.id
-                val color = if (isActive) Color(0xFF2196F3) else Color(0xFF757575)
+                val color = if (isActive) Blue else Grey
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -134,7 +136,7 @@ fun MockBottomNav(
         ) {
             items.forEach { (screen, icon) ->
                 val isActive = activeTab == screen
-                val color = if (isActive) Color(0xFF2196F3) else Color(0xFF757575)
+                val color = if (isActive) Blue else Grey
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
