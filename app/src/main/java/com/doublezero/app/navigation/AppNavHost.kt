@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import com.doublezero.feature_home.entry.SplashScreen
 import com.doublezero.feature_home.HomeScreen
 import com.doublezero.feature_mypage.HistoryScreen
@@ -24,15 +25,17 @@ fun AppNavHost(
         composable<Screen.Splash> {
             SplashScreen(
                 onTimeout = {
-                    navController.navigate(Screen.Home) {
+                    navController.navigate(Screen.Home()) {
                         popUpTo<Screen.Splash> { inclusive = true }
                     }
                 }
             )
         }
 
-        composable<Screen.Home> {
+        composable<Screen.Home> { backStackEntry ->
+            val homeScreen = backStackEntry.toRoute<Screen.Home>()
             HomeScreen(
+                openSearch = homeScreen.openSearch,
                 onNavigate = { screen -> navController.navigate(screen) }
             )
         }

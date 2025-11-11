@@ -66,15 +66,15 @@ private fun BottomNavManager(navController: NavHostController) {
     ) {
         DoubleZeroBottomNav(
             activeTab = when (currentScreen) {
-                Screen.Home -> "home"
+                is Screen.Home -> "home"
                 Screen.MyPage -> "mypage"
                 else -> "home"
             },
             onNavigate = { route ->
                 val targetScreen = when (route) {
-                    "home" -> Screen.Home
+                    "home" -> Screen.Home()
                     "mypage" -> Screen.MyPage
-                    else -> Screen.Home
+                    else -> Screen.Home()
                 }
 
                 if (currentScreen != targetScreen) {
@@ -86,12 +86,10 @@ private fun BottomNavManager(navController: NavHostController) {
                 }
             },
             onSearchClick = {
-                if (currentScreen != Screen.Home) {
-                    navController.navigate(Screen.Home) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+                navController.navigate(Screen.Home(openSearch = true)) {
+                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
                 }
             }
         )

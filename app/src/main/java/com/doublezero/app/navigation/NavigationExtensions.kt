@@ -19,7 +19,7 @@ fun NavHostController.currentScreenAsState(): State<Screen?> {
 fun NavBackStackEntry.toScreen(): Screen? {
     return when (destination.route?.substringBefore("?")?.substringBefore("/")) {
         Screen.Splash::class.qualifiedName -> Screen.Splash
-        Screen.Home::class.qualifiedName -> Screen.Home
+        Screen.Home::class.qualifiedName -> Screen.Home()
         Screen.MyPage::class.qualifiedName -> Screen.MyPage
         Screen.History::class.qualifiedName -> Screen.History
         Screen.Settings::class.qualifiedName -> Screen.Settings
@@ -28,12 +28,12 @@ fun NavBackStackEntry.toScreen(): Screen? {
 }
 
 fun Screen.shouldShowTopBar(): Boolean = when (this) {
-    Screen.Splash, Screen.Home -> false
+    Screen.Splash, is Screen.Home -> false
     Screen.MyPage, Screen.History, Screen.Settings -> true
 }
 
 fun Screen.shouldShowBottomNav(): Boolean = when (this) {
-    Screen.Home, Screen.MyPage -> true
+    is Screen.Home, Screen.MyPage -> true
     Screen.Splash, Screen.History, Screen.Settings -> false
 }
 

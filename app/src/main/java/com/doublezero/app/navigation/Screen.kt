@@ -8,7 +8,7 @@ sealed class Screen {
     data object Splash : Screen()
 
     @Serializable
-    data object Home : Screen()
+    data class Home(val openSearch: Boolean = false) : Screen()
 
     @Serializable
     data object MyPage : Screen()
