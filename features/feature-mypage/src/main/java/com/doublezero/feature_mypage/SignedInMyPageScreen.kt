@@ -3,7 +3,7 @@ package com.doublezero.feature_mypage
 import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.* // Import everything from layout
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +12,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Settings
-// Import only necessary Material 3 components
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -29,26 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage // Coil image loader
+import coil.compose.AsyncImage
 import com.doublezero.feature_mypage.uistate.UserProfile
 
-// No Scaffold imports needed
-
-/**
- * MyPageLoggedIn.tsx converted Composable.
- * Scaffold is completely removed, relying on MainActivity's Scaffold.
- */
 @Composable
 fun SignedInMyPageScreen(
-    userProfile: UserProfile, // Provided by MyPageScreen (from ViewModel)
-    onLogout: () -> Unit, // Provided by MyPageScreen (from ViewModel)
-    // Navigation callbacks provided by MyPageScreen
+    userProfile: UserProfile,
+    onLogout: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToSettings: () -> Unit
-    // Removed onNavigateToHome and onSearchClick parameters
 ) {
-    // Removed the Scaffold wrapper.
-    // Padding from MainActivity's Scaffold (passed via NavHost modifier) handles Top/Bottom bars.
 
     LazyColumn(
         modifier = Modifier
@@ -87,15 +76,12 @@ fun SignedInMyPageScreen(
                 onClick = onLogout
             )
         }
-        // Add Spacer for bottom padding if content might be short
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
-// --- Helper Composables (UserProfileHeader, MenuButton) ---
-// --- remain unchanged. They do not contain Scaffold. ---
 
 @Composable
 private fun UserProfileHeader(userProfile: UserProfile) {
@@ -117,7 +103,6 @@ private fun UserProfileHeader(userProfile: UserProfile) {
                     .size(64.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop
-                // placeholder(...) recommended
             )
             Column {
                 Text(userProfile.name, fontWeight = FontWeight.SemiBold)
@@ -181,7 +166,6 @@ private fun MenuButton(
 @Composable
 private fun SignedInMyPageScreenPreview() {
     MaterialTheme {
-        // Preview still works without Scaffold
         SignedInMyPageScreen(
             userProfile = UserProfile("John Doe", ""),
             onLogout = {},

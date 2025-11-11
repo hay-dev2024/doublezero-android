@@ -9,7 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.doublezero.core.ui.color.*
-import androidx.compose.foundation.layout.* // Keep layout imports
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.doublezero.core.model.Trip
 import com.doublezero.core.ui.utils.getRiskColor
 
-// Mock data (keep for preview/development)
+// Mock data
 private val mockTrips = listOf(
     Trip(id = 1, date = "2025-10-22", time = "14:30", origin = "Seoul Station", destination = "Gangnam Office", distance = "12.5 km", duration = "25 min", risk = "safe", riskDetails = "Clear weather, low traffic. No accidents reported on route."),
     Trip(id = 2, date = "2025-10-21", time = "09:15", origin = "Home", destination = "Yeouido Park", distance = "8.3 km", duration = "18 min", risk = "caution", riskDetails = "Light rain conditions. Moderate traffic at intersections."),
@@ -49,17 +49,10 @@ private val mockTrips = listOf(
 
 @Composable
 fun HistoryScreen(
-    // onBackClicked is still needed for NavHost to trigger navigation,
-    // even though the UI button is now managed by MainActivity.
-    // We don't need it *inside* this composable anymore if there's no UI element using it here.
-    // However, keeping it in the signature is fine if NavHost provides it.
-    onBackClicked: () -> Unit // Provided by NavHost in MainActivity
+    onBackClicked: () -> Unit
 ) {
     var expandedTripId by remember { mutableStateOf<Int?>(null) }
 
-    // Removed the Scaffold wrapper.
-    // The background color is now applied directly to the LazyColumn or a Box wrapper if needed.
-    // Padding from MainActivity's Scaffold (passed via NavHost modifier) handles Top/Bottom bars.
 
     LazyColumn(
         modifier = Modifier
@@ -78,14 +71,10 @@ fun HistoryScreen(
             )
         }
         item {
-            Spacer(modifier = Modifier.height(16.dp)) // Bottom padding within the list
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
-
-// --- Helper Composables (TripItem, RouteInfoRow, StatInfoRow) ---
-// --- remain unchanged from the previous version. ---
-// --- They do not contain Scaffold. ---
 
 @Composable
 private fun TripItem(
@@ -107,7 +96,6 @@ private fun TripItem(
                 .clickable(onClick = onClick)
                 .padding(16.dp)
         ) {
-            // Header Row (Date/Time, Risk Tag, Chevron)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -146,7 +134,6 @@ private fun TripItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Route Column (Origin, Destination)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 RouteInfoRow(
                     icon = Icons.Default.LocationOn,
@@ -162,7 +149,6 @@ private fun TripItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stats Row (Distance, Duration)
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 StatInfoRow(
                     icon = Icons.Default.Map,
@@ -175,7 +161,6 @@ private fun TripItem(
             }
         }
 
-        // Expanded Details
         AnimatedVisibility(
             visible = isExpanded,
             enter = fadeIn(tween(100)) + expandVertically(tween(200)),
@@ -250,7 +235,6 @@ private fun StatInfoRow(icon: ImageVector, text: String) {
 @Composable
 private fun HistoryScreenPreview() {
     MaterialTheme {
-        // Preview still works without Scaffold, showing just the list content
         HistoryScreen(onBackClicked = {})
     }
 }

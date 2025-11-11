@@ -9,13 +9,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// speedUnit 상태 ('kmh' | 'mph')
+
 enum class SpeedUnit(val displayName: String) {
     KMH("Kilometers per hour (km/h)"),
     MPH("Miles per hour (mph)")
 }
 
-// SettingsScreen의 전체 UI 상태
 data class SettingsUiState(
     val ttsEnabled: Boolean = true,
     val riskDisplayEnabled: Boolean = true,
@@ -42,11 +41,8 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
     }
 
     fun saveSettings() {
-        // TODO: 실제 저장 로직 구현 (e.g., DataStore, SharedPreferences)
-        // 저장이 완료되면 확인 메시지 표시
         viewModelScope.launch {
             _uiState.update { it.copy(showSavedConfirmation = true) }
-            // 일정 시간 후 메시지 숨김
             kotlinx.coroutines.delay(2000)
             _uiState.update { it.copy(showSavedConfirmation = false) }
         }

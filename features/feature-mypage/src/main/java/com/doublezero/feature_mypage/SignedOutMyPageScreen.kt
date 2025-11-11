@@ -3,13 +3,12 @@ package com.doublezero.feature_mypage
 import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.* // Import everything from layout
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-// Import only necessary Material 3 components
-import androidx.compose.material3.* // Keep M3 imports
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,22 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// No Scaffold imports needed
 
-/**
- * MyPageLoggedOut.tsx converted Composable.
- * Scaffold is completely removed, relying on MainActivity's Scaffold.
- */
 @Composable
 fun SignedOutMyPageScreen(
-    onLoginClick: () -> Unit // Provided by MyPageScreen (from ViewModel)
-    // Removed onNavigateToHome and onSearchClick parameters
+    onLoginClick: () -> Unit
 ) {
     var showLoginPopup by remember { mutableStateOf(false) }
 
-    // Removed the Scaffold wrapper.
-    // Box provides the background and centering.
-    // Padding from MainActivity's Scaffold (passed via NavHost modifier) handles Top/Bottom bars.
 
     Box(
         modifier = Modifier
@@ -88,11 +78,10 @@ fun SignedOutMyPageScreen(
         }
     }
 
-    // Mock Login Popup
     if (showLoginPopup) {
         LoginPopupDialog(
             onConfirmLogin = {
-                onLoginClick() // Trigger login logic in ViewModel
+                onLoginClick()
                 showLoginPopup = false
             },
             onDismiss = { showLoginPopup = false }
@@ -100,8 +89,6 @@ fun SignedOutMyPageScreen(
     }
 }
 
-// --- Helper Composable (LoginPopupDialog) ---
-// --- remains unchanged. It does not contain Scaffold. ---
 
 @Composable
 private fun LoginPopupDialog(
@@ -149,7 +136,6 @@ private fun LoginPopupDialog(
 @Composable
 private fun SignedOutMyPageScreenPreview() {
     MaterialTheme {
-        // Preview still works without Scaffold
         SignedOutMyPageScreen(
             onLoginClick = {}
         )

@@ -8,21 +8,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable // Keep if needed by dropdowns etc.
-import androidx.compose.foundation.layout.* // Keep layout imports
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-// Keep necessary Material Icons imports
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info // AlertCircle 대체
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Speed // Gauge 대체
-import androidx.compose.material.icons.filled.VolumeUp // Volume2 대체
-// Import only necessary Material 3 components
-import androidx.compose.material3.* // Keep M3 imports
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,29 +31,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
-@OptIn(ExperimentalMaterial3Api::class) // Needed for ExposedDropdownMenuBox
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    // onBackClicked is provided by NavHost, used by TopAppBar in MainActivity
     onBackClicked: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
-    // Removed the Scaffold wrapper.
-    // Box provides a scope for alignment (like for the toast).
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Apply the background color here
-            .background(Color(0xFFF8F9FA))
-        // Padding from MainActivity's Scaffold is handled by NavHost modifier.
+            .background(BrightWhite)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Apply additional content padding specific to this screen.
                 .padding(horizontal = 20.dp, vertical = 24.dp)
                 .verticalScroll(scrollState)
         ) {
@@ -106,16 +96,14 @@ fun SettingsScreen(
                 Text("Save Settings", fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(modifier = Modifier.height(20.dp)) // Bottom padding after button
+            Spacer(modifier = Modifier.height(20.dp))
         }
 
-        // Save Confirmation Toast - Aligned within the parent Box
         AnimatedVisibility(
             visible = uiState.showSavedConfirmation,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                // Adjust top padding considering potential TopAppBar height from MainActivity
-                .padding(top = 16.dp), // Reduced padding assuming TopAppBar pushes content down
+                .padding(top = 16.dp),
             enter = fadeIn(tween(300)) + slideInVertically(tween(300)),
             exit = fadeOut(tween(300)) + slideOutVertically(tween(300))
         ) {
@@ -141,10 +129,6 @@ fun SettingsScreen(
         }
     }
 }
-
-// --- Helper Composables (SettingCard, SettingSwitchItem, SettingDropdownItem) ---
-// --- remain unchanged from the previous version. ---
-// --- They do not contain Scaffold. ---
 
 @Composable
 private fun SettingCard(
@@ -319,9 +303,8 @@ private fun SettingDropdownItem(
 @Composable
 private fun SettingsScreenPreview() {
     MaterialTheme {
-        // Preview still works without Scaffold, showing just the settings content
         SettingsScreen(
-            viewModel = SettingsViewModel(), // Use temporary ViewModel for preview
+            viewModel = SettingsViewModel(),
             onBackClicked = {}
         )
     }

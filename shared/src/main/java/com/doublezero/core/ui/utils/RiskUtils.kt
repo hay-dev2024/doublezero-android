@@ -1,11 +1,7 @@
 package com.doublezero.core.ui.utils
 
 import androidx.compose.ui.graphics.Color
-
-/**
- * Data를 UI로 매핑하는 유틸리티
- * core 모듈의 공용 유틸리티로 분리
- */
+import com.doublezero.core.ui.color.*
 
 data class RiskStyle(
     val bg: Color,
@@ -16,18 +12,18 @@ data class RiskStyle(
 fun getRiskColor(risk: String): RiskStyle {
     return when (risk) {
         "safe" -> RiskStyle(
-            bg = Color(0xFFE8F5E9),
-            text = Color(0xFF4CAF50),
+            bg = GreenishGrey,
+            text = DarkGreen,
             label = "Safe"
         )
         "caution" -> RiskStyle(
-            bg = Color(0xFFFFF9C4),
-            text = Color(0xFFFFA000),
+            bg = WarmishWhite,
+            text = Orange,
             label = "Caution"
         )
         "risk" -> RiskStyle(
-            bg = Color(0xFFFFEBEE),
-            text = Color(0xFFF44336),
+            bg = ReddishWhite,
+            text = Red,
             label = "Risk"
         )
         else -> RiskStyle(Color.Gray, Color.White, "Unknown")

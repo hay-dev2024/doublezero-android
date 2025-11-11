@@ -24,14 +24,13 @@ import kotlinx.coroutines.delay
 fun SplashScreen(
     onTimeout: () -> Unit
 ) {
-    // Composable이 화면에 보일 때(Launched) 딱 한 번(Unit) 실행
     LaunchedEffect(Unit) {
-        delay(3000) // 3초 대기
-        onTimeout() // 네비게이션 트리거
+        delay(3000)
+        onTimeout()
     }
 
     val gradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF87CEEB), Color.White)
+        colors = listOf(SkyBlue, Color.White)
     )
 
     Box(

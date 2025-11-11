@@ -24,7 +24,7 @@ fun CommonTopAppBar(
     title: String,
     canNavigateBack: Boolean,
     onNavigateUp: () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {} // 액션 슬롯 추가
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -39,15 +39,15 @@ fun CommonTopAppBar(
                 IconButton(onClick = onNavigateUp) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back" // TODO: String resource
+                        contentDescription = "Back"
                     )
                 }
             }
         },
-        actions = actions, // 전달받은 액션 아이템 표시
+        actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White, // TODO: Theme color
-            titleContentColor = Color(0xFF212121) // TODO: Theme color
+            containerColor = Color.White,
+            titleContentColor = Color.Black
         )
     )
 }
