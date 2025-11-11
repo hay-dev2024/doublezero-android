@@ -69,9 +69,10 @@ import androidx.compose.ui.zIndex
 
 @Composable
 fun HomeScreen(
+    openSearch: Boolean = false,
     onNavigate: (String) -> Unit
 ) {
-    var isSearchOpen by remember { mutableStateOf(false) }
+    var isSearchOpen by remember { mutableStateOf(openSearch) }
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var showResult by remember { mutableStateOf(false) }
