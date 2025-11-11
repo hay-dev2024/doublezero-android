@@ -1,13 +1,11 @@
 package com.doublezero.feature_home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -45,10 +41,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,146 +60,92 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     openSearch: Boolean = false,
     onNavigate: (String) -> Unit
 ) {
-    var isSearchOpen by remember { mutableStateOf(openSearch) }
+    var showSheet by remember { mutableStateOf(openSearch) }
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var showResult by remember { mutableStateOf(false) }
 
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
+        skipPartiallyExpanded = false
+    )
+
+    LaunchedEffect(openSearch) {
+        if (openSearch) {
+            showSheet = true
+        }
+    }
+
     fun handleCloseSheet() {
-        isSearchOpen = false
-        // TODO: Consider Coroutine/LaunchedEffect for delayed reset if needed
+        showSheet = false
         showResult = false
         origin = ""
         destination = ""
     }
 
-
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Map View Placeholder
         MapPlaceholder(Modifier.fillMaxSize())
 
-        AnimatedVisibility(
-            visible = isSearchOpen,
-            enter = fadeIn(animationSpec = tween(300)),
-            exit = fadeOut(animationSpec = tween(300)),
-            modifier = Modifier.zIndex(2f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable { handleCloseSheet() }
-            )
-        }
-
-        // Search Bottom Sheet
-        SearchBottomSheet(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .zIndex(3f),
-            isSearchOpen = isSearchOpen,
-            origin = origin,
-            destination = destination,
-            showResult = showResult,
-            onOriginChange = { origin = it },
-            onDestinationChange = { destination = it },
-            onFindRoute = {
-                if (origin.isNotBlank() && destination.isNotBlank()) {
-                    showResult = true
-                }
-            },
-            onConfirmRoute = { handleCloseSheet() },
-            onClose = { handleCloseSheet() },
-            onStartNavigation = { isSearchOpen = true }
-        )
-    }
-}
-
-
-@Composable
-private fun SearchBottomSheet( /* ... parameters ... */ modifier: Modifier = Modifier, isSearchOpen: Boolean, origin: String, destination: String, showResult: Boolean, onOriginChange: (String) -> Unit, onDestinationChange: (String) -> Unit, onFindRoute: () -> Unit, onConfirmRoute: () -> Unit, onClose: () -> Unit, onStartNavigation: () -> Unit) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(300)),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
-        ) {
-            Box( // Drag Handle
-                modifier = Modifier
-                    .width(48.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE0E0E0))
-            )
-
-            if (isSearchOpen) { // Close Button
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(top = 4.dp, end = 16.dp)
-                ) {
-                    Icon(Icons.Default.Close, "Close", tint = Color(0xFF757575))
-                }
-            } else {
-                Spacer(Modifier.height(20.dp))
-            }
-
-            Column( // Scrollable Content
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp)
+        if (showSheet) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { handleCloseSheet() },
+                sheetState = sheetState,
+                dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
             ) {
-                InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Search Route",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        IconButton(onClick = { handleCloseSheet() }) {
+                            Icon(Icons.Default.Close, "Close", tint = Color(0xFF757575))
+                        }
+                    }
 
-                if (isSearchOpen) {
+                    Spacer(Modifier.height(16.dp))
+
+                    InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
+
                     SearchForm(
                         origin = origin,
                         destination = destination,
                         showResult = showResult,
-                        onOriginChange = onOriginChange,
-                        onDestinationChange = onDestinationChange,
-                        onFindRoute = onFindRoute,
-                        onConfirmRoute = onConfirmRoute
+                        onOriginChange = { origin = it },
+                        onDestinationChange = { destination = it },
+                        onFindRoute = {
+                            if (origin.isNotBlank() && destination.isNotBlank()) {
+                                showResult = true
+                            }
+                        },
+                        onConfirmRoute = { handleCloseSheet() }
                     )
-                } else {
-                    Button( // Start Navigation Button
-                        onClick = onStartNavigation,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(vertical = 14.dp)
-                    ) {
-                        Icon(Icons.Default.Navigation, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Start Navigation", fontWeight = FontWeight.SemiBold)
-                    }
                 }
             }
         }
     }
 }
+
 
 @Composable
 private fun InfoCardsRow(modifier: Modifier = Modifier) {
@@ -237,7 +179,6 @@ private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint:
 @Composable
 private fun SearchForm(origin: String, destination: String, showResult: Boolean, onOriginChange: (String) -> Unit, onDestinationChange: (String) -> Unit, onFindRoute: () -> Unit, onConfirmRoute: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Search Route", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 20.dp))
         Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 24.dp)) {
             SearchInput(origin, onOriginChange, "Origin", Icons.Default.LocationOn, Color(0xFF4CAF50))
             SearchInput(destination, onDestinationChange, "Destination", Icons.Default.LocationOn, Color(0xFFF44336))
@@ -329,21 +270,10 @@ private fun HomeScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, widthDp = 390)
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun HomeScreenSearchOpenPreview() {
     MaterialTheme {
-        SearchBottomSheet(
-            isSearchOpen = true,
-            origin = "Seoul Station",
-            destination = "Gangnam",
-            showResult = true,
-            onOriginChange = {},
-            onDestinationChange = {},
-            onFindRoute = {},
-            onConfirmRoute = {},
-            onClose = {},
-            onStartNavigation = {}
-        )
+        HomeScreen(openSearch = true, onNavigate = {})
     }
 }
