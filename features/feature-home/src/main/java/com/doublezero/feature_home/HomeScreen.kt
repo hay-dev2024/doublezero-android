@@ -67,7 +67,9 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun HomeScreen(
     openSearch: Boolean = false,
-    onNavigate: (String) -> Unit
+    onNavigateToMyPage: () -> Unit,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     var showSheet by remember { mutableStateOf(openSearch) }
     var origin by remember { mutableStateOf("") }
@@ -267,7 +269,11 @@ private fun MapPlaceholder(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreenPreview() {
     MaterialTheme {
-        HomeScreen(onNavigate = {})
+        HomeScreen(
+            onNavigateToMyPage = {},
+            onNavigateToHistory = {},
+            onNavigateToSettings = {}
+        )
     }
 }
 
@@ -275,6 +281,11 @@ private fun HomeScreenPreview() {
 @Composable
 private fun HomeScreenSearchOpenPreview() {
     MaterialTheme {
-        HomeScreen(openSearch = true, onNavigate = {})
+        HomeScreen(
+            openSearch = true,
+            onNavigateToMyPage = {},
+            onNavigateToHistory = {},
+            onNavigateToSettings = {}
+        )
     }
 }

@@ -1,9 +1,9 @@
 package com.doublezero.feature_mypage
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 @Composable
@@ -15,7 +15,7 @@ fun MyPageScreen(
     onNavigateToSettings: () -> Unit,
     onSearchClick: () -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
 
     if (uiState.isLoggedIn) {

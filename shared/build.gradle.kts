@@ -43,6 +43,8 @@ kotlin{
 }
 
 dependencies {
+    implementation(project(":data"))
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material.icons.extended)
 

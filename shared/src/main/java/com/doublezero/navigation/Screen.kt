@@ -1,4 +1,4 @@
-package com.doublezero.app.navigation
+package com.doublezero.navigation
 
 import kotlinx.serialization.Serializable
 

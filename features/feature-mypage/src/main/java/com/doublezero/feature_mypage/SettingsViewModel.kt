@@ -2,6 +2,7 @@ package com.doublezero.feature_mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.doublezero.shared.model.SpeedUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,11 +10,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
-enum class SpeedUnit(val displayName: String) {
-    KMH("Kilometers per hour (km/h)"),
-    MPH("Miles per hour (mph)")
-}
 
 data class SettingsUiState(
     val ttsEnabled: Boolean = true,

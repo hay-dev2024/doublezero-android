@@ -1,4 +1,4 @@
-package com.doublezero.core.model
+package com.doublezero.data.model
 
 data class Trip(
     val id: Int,
@@ -11,3 +11,4 @@ data class Trip(
     val risk: String, // "safe", "caution", "risk"
     val riskDetails: String
 )
+

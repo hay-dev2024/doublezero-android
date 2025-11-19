@@ -45,6 +45,9 @@ kotlin{
 dependencies {
 
     implementation(project(":shared"))
+    implementation(project(":data"))
+
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

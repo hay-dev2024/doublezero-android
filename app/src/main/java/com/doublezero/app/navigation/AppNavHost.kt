@@ -5,11 +5,11 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
+import com.doublezero.navigation.Screen
 import com.doublezero.feature_home.entry.SplashScreen
-import com.doublezero.feature_home.HomeScreen
+import com.doublezero.feature_home.navigation.homeScreen
+import com.doublezero.feature_mypage.navigation.myPageScreen
 import com.doublezero.feature_mypage.HistoryScreen
-import com.doublezero.feature_mypage.MyPageScreen
 import com.doublezero.feature_mypage.SettingsScreen
 
 @Composable
@@ -32,33 +32,29 @@ fun AppNavHost(
             )
         }
 
-        composable<Screen.Home> { backStackEntry ->
-            val homeScreen = backStackEntry.toRoute<Screen.Home>()
-            HomeScreen(
-                openSearch = homeScreen.openSearch,
-                onNavigate = { screen -> navController.navigate(screen) }
-            )
-        }
+        homeScreen(
+            onNavigateToMyPage = { navController.navigate(Screen.MyPage) },
+            onNavigateToHistory = { navController.navigate(Screen.History) },
+            onNavigateToSettings = { navController.navigate(Screen.Settings) }
+        )
 
-        composable<Screen.MyPage> {
-            MyPageScreen(
-                onNavigateToHome = { },
-                onNavigateToHistory = { navController.navigate(Screen.History) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings) },
-                onSearchClick = { }
-            )
-        }
+        myPageScreen(
+            onNavigateToHome = {
+                navController.navigate(Screen.Home()) {
+                    popUpTo(Screen.Home()) { inclusive = true }
+                }
+            },
+            onNavigateToHistory = { navController.navigate(Screen.History) },
+            onNavigateToSettings = { navController.navigate(Screen.Settings) },
+            onSearchClick = { navController.navigate(Screen.Home(openSearch = true)) }
+        )
 
         composable<Screen.History> {
-            HistoryScreen(
-                onBackClicked = { navController.popBackStack() }
-            )
+            HistoryScreen(onBackClicked = { navController.popBackStack() })
         }
 
         composable<Screen.Settings> {
-            SettingsScreen(
-                onBackClicked = { navController.popBackStack() }
-            )
+            SettingsScreen(onBackClicked = { navController.popBackStack() })
         }
     }
 }

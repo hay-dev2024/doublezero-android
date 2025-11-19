@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.doublezero.navigation.Screen
 
 @Composable
 fun NavHostController.currentScreenAsState(): State<Screen?> {

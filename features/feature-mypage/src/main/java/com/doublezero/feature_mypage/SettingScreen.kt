@@ -1,6 +1,7 @@
 package com.doublezero.feature_mypage
 
 import com.doublezero.core.ui.color.*
+import com.doublezero.shared.model.SpeedUnit
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -30,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +39,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClicked: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
 
     Box(
