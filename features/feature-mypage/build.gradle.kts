@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -9,6 +12,13 @@ plugins {
 
 }
 
+// 1. local.properties 파일 읽기 로직
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
 android {
     namespace = "com.doublezero.feature_mypage"
     compileSdk {
@@ -17,9 +27,22 @@ android {
 
     defaultConfig {
         minSdk = 24
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        // 2. BuildConfig에 String 필드 추가 (Key, Name, Value)
+        // 코드에서 BuildConfig.WEB_CLIENT_ID 로 접근 가능해짐
+        buildConfigField(
+            "String",
+            "WEB_CLIENT_ID",
+            localProperties.getProperty("GOOGLE_WEB_CLIENT_ID") ?: "\"MISSING_API_KEY\""
+        )
+    }
+
+    // 3. BuildConfig 기능 활성화
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -71,4 +94,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    implementation(libs.play.services.auth)
 }

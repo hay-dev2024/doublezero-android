@@ -6,12 +6,10 @@ import com.doublezero.data.repository.AuthRepository
 import com.doublezero.feature_mypage.uistate.MyPageUiState
 import com.doublezero.feature_mypage.uistate.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,10 +24,14 @@ class MyPageViewModel @Inject constructor(
     ) { isLoggedIn, profile ->
         MyPageUiState(
             isLoggedIn = isLoggedIn,
-            userProfile = UserProfile(
-                name = profile.name,
-                photoUrl = profile.photoUrl
-            )
+            userProfile = if (isLoggedIn) {
+                UserProfile(
+                    name = profile.name,
+                    photoUrl = profile.photoUrl
+                )
+            } else {
+                UserProfile()
+            }
         )
     }.stateIn(
         scope = viewModelScope,
@@ -37,9 +39,13 @@ class MyPageViewModel @Inject constructor(
         initialValue = MyPageUiState()
     )
 
-    fun onLogin() {
+    fun onGoogleLoginSuccess(idToken: String) {
         viewModelScope.launch {
-            authRepository.login("John Doe", "https://images.unsplash.com/photo-1633332755192-727a05c4013d")
+            try {
+                authRepository.loginWithGoogle(idToken)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

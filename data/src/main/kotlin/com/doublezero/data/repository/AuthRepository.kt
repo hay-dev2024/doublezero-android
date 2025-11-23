@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.Flow
 interface AuthRepository {
     fun observeAuthState(): Flow<Boolean>
     fun observeUserProfile(): Flow<UserProfile>
-    suspend fun login(name: String, photoUrl: String)
+
+    suspend fun loginWithGoogle(idToken: String)
+
     suspend fun logout()
 }
-

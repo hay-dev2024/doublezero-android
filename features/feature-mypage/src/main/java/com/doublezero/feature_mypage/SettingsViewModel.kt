@@ -2,7 +2,7 @@ package com.doublezero.feature_mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.doublezero.shared.model.SpeedUnit
+import com.doublezero.data.model.SpeedUnit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -1,7 +1,7 @@
 package com.doublezero.feature_mypage
 
 import com.doublezero.core.ui.color.*
-import com.doublezero.shared.model.SpeedUnit
+import com.doublezero.data.model.SpeedUnit
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
