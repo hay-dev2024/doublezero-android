@@ -1,6 +1,7 @@
 package com.doublezero.feature_mypage
 
 import com.doublezero.core.ui.color.*
+import com.doublezero.feature_mypage.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -21,7 +22,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun SignedOutMyPageScreen(
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    onDevLoginClick: () -> Unit = {}
 ) {
     var showLoginPopup by remember { mutableStateOf(false) }
 
@@ -62,6 +64,9 @@ fun SignedOutMyPageScreen(
             // Sign in with Google Button
             Button(
                 onClick = { showLoginPopup = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 border = BorderStroke(1.dp, LightGrey),
@@ -74,6 +79,30 @@ fun SignedOutMyPageScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Dev login button: same style as Google button, shown only in debug builds
+            if (BuildConfig.DEBUG) {
+                Button(
+                    onClick = onDevLoginClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, LightGrey),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+                ) {
+                    Text("G", color = Blue, fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "Dev login (test token)",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
@@ -104,7 +133,7 @@ private fun LoginPopupDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Blue),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Continue as John Doe", fontWeight = FontWeight.SemiBold)
+                Text("Continue with Google", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -122,7 +151,7 @@ private fun LoginPopupDialog(
         },
         text = {
             Text(
-                "Choose an account to continue to DoubleZero",
+                "You will be redirected to Google to choose an account to sign in.",
                 fontSize = 14.sp,
                 color = Grey
             )
