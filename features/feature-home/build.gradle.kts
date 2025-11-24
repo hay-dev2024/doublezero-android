@@ -43,6 +43,7 @@ kotlin{
 }
 dependencies {
     implementation(project(":shared"))
+    implementation(project(":data"))
 
     implementation(libs.kotlinx.serialization.json)
 

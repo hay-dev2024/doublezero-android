@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,18 +84,28 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
 
+// New lifecycle/hilt imports
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     openSearch: Boolean = false,
     onNavigateToMyPage: () -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     var showSheet by remember { mutableStateOf(openSearch) }
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var showResult by remember { mutableStateOf(false) }
+    var selectingForOrigin by remember { mutableStateOf(true) }
 
     // Map related state
     var locationPermissionGranted by remember { mutableStateOf(false) }
@@ -123,6 +134,17 @@ fun HomeScreen(
         }
     }
 
+    // react to selected origin/destination from VM to update text fields
+    LaunchedEffect(state.selectedOrigin) {
+        state.selectedOrigin?.let { origin = it.name }
+    }
+    LaunchedEffect(state.selectedDestination) {
+        state.selectedDestination?.let { destination = it.name }
+    }
+    LaunchedEffect(state.route) {
+        showResult = state.route != null
+    }
+
     fun handleCloseSheet() {
         showSheet = false
         showResult = false
@@ -134,10 +156,12 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         // Always show the Map (so tiles load even if user hasn't granted location permission).
-        // We won't enable "my location" features unless permission is granted.
         MapScreen(
-            encodedPolyline = null,
-            markers = listOf(LatLng(37.5665, 126.9780)),
+            encodedPolyline = state.route?.polyline,
+            markers = listOfNotNull(
+                state.selectedOrigin?.let { LatLng(it.lat, it.lon) },
+                state.selectedDestination?.let { LatLng(it.lat, it.lon) }
+            ),
             locationPermissionGranted = locationPermissionGranted,
             modifier = Modifier.fillMaxSize()
         )
@@ -216,19 +240,64 @@ fun HomeScreen(
 
                     InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
 
-                    SearchForm(
-                        origin = origin,
-                        destination = destination,
-                        showResult = showResult,
-                        onOriginChange = { origin = it },
-                        onDestinationChange = { destination = it },
-                        onFindRoute = {
-                            if (origin.isNotBlank() && destination.isNotBlank()) {
-                                showResult = true
+                    // Search inputs
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                            SearchInput(origin, onValueChange = {
+                                origin = it
+                                selectingForOrigin = true
+                                viewModel.onQueryChanged(it)
+                            }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
+
+                            SearchInput(destination, onValueChange = {
+                                destination = it
+                                selectingForOrigin = false
+                                viewModel.onQueryChanged(it)
+                            }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                        }
+
+                        // Suggestions list
+                        if (state.suggestions.isNotEmpty()) {
+                            LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                                items(state.suggestions) { suggestion ->
+                                    Card(modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable {
+                                            if (selectingForOrigin) {
+                                                viewModel.selectSuggestionAsOrigin(suggestion.placeId)
+                                                origin = suggestion.mainText
+                                            } else {
+                                                viewModel.selectSuggestionAsDestination(suggestion.placeId)
+                                                destination = suggestion.mainText
+                                            }
+                                            viewModel.onQueryChanged("")
+                                        }
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                        }
+                                    }
+                                }
                             }
-                        },
-                        onConfirmRoute = { handleCloseSheet() }
-                    )
+                        }
+
+                        Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+                            Icon(Icons.Default.Search, null, Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Find Route", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        AnimatedVisibility(
+                            visible = showResult,
+                            enter = fadeIn(tween(300)) + slideInVertically(tween(300), initialOffsetY = { it / 2 }),
+                            exit = fadeOut()
+                        ) {
+                            RouteSummaryCard(onConfirmRoute = { handleCloseSheet() })
+                        }
+                    }
                 }
             }
         }

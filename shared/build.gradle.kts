@@ -43,7 +43,8 @@ kotlin{
 }
 
 dependencies {
-    implementation(project(":data"))
+    // expose data module types transitively so features can see repository interfaces
+    api(project(":data"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material.icons.extended)

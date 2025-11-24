@@ -41,6 +41,9 @@ kotlin{
     jvmToolchain(21)
 }
 dependencies {
+    implementation(project(":shared"))
+    implementation(project(":data"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
