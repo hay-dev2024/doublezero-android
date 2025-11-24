@@ -1,6 +1,6 @@
 package com.doublezero.data.repository
 
-import com.doublezero.data.network.LatLngDto
+import com.doublezero.data.network.LatLonDto
 import com.doublezero.data.network.NavigationApi
 import com.doublezero.data.network.RouteRequestDto
 import com.doublezero.data.network.RouteDto
@@ -30,8 +30,8 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
 
     override suspend fun computeRoute(originLat: Double, originLng: Double, destLat: Double, destLng: Double, token: String?): RouteDto? {
         val req = RouteRequestDto(
-            origin = LatLngDto(originLat, originLng),
-            destination = LatLngDto(destLat, destLng)
+            origin = LatLonDto(originLat, originLng),
+            destination = LatLonDto(destLat, destLng)
         )
 
         return try {

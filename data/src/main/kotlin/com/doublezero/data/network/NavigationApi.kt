@@ -6,11 +6,12 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 
 // DTOs for navigation route request/response
-data class LatLngDto(val lat: Double, val lng: Double)
+// renamed to LatLonDto to be clearer and avoid confusion with other LatLng types
+data class LatLonDto(val lat: Double, val lon: Double)
 
 data class RouteRequestDto(
-    val origin: LatLngDto,
-    val destination: LatLngDto,
+    val origin: LatLonDto,
+    val destination: LatLonDto,
     val travelMode: String = "DRIVE"
 )
 
