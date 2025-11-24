@@ -83,6 +83,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
+import com.google.android.gms.maps.CameraUpdateFactory // Added import
 
 // New lifecycle/hilt imports
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -155,6 +156,11 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
+        // create shared camera state here so HomeScreen can control camera movements
+        val cameraPositionState = rememberCameraPositionState {
+            position = CameraPosition.fromLatLngZoom(LatLng(40.7128, -74.0060), 12f)
+        }
+
         // Always show the Map (so tiles load even if user hasn't granted location permission).
         MapScreen(
             encodedPolyline = state.route?.polyline,
@@ -163,8 +169,47 @@ fun HomeScreen(
                 state.selectedDestination?.let { LatLng(it.lat, it.lon) }
             ),
             locationPermissionGranted = locationPermissionGranted,
+            cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize()
         )
+
+        // When a new route is available, animate camera to fit the route bounds (if possible)
+        LaunchedEffect(state.route) {
+            state.route?.polyline?.takeIf { it.isNotBlank() }?.let { enc ->
+                try {
+                    val points = PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
+                    if (points.isNotEmpty()) {
+                        val lats = points.map { it.latitude }
+                        val lons = points.map { it.longitude }
+                        val north = lats.maxOrNull() ?: 0.0
+                        val south = lats.minOrNull() ?: 0.0
+                        val east = lons.maxOrNull() ?: 0.0
+                        val west = lons.minOrNull() ?: 0.0
+                        val centerLat = (north + south) / 2.0
+                        val centerLon = (east + west) / 2.0
+                        val latSpan = north - south
+                        val lonSpan = east - west
+                        val span = maxOf(latSpan, lonSpan)
+                        // simple heuristic for zoom based on span
+                        val zoom = when {
+                            span < 0.01 -> 15f
+                            span < 0.05 -> 14f
+                            span < 0.25 -> 12f
+                            span < 1.0 -> 10f
+                            else -> 8f
+                        }
+                        cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLon), zoom)))
+                    }
+                } catch (_: Exception) {
+                    // ignore camera centering errors
+                }
+            } ?: run {
+                // no polyline -> if origin selected, center to origin
+                state.selectedOrigin?.let {
+                    cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
+                }
+            }
+        }
 
         // If permission is not granted, show a small overlay with a button to request it.
         if (!locationPermissionGranted) {
@@ -295,7 +340,7 @@ fun HomeScreen(
                             enter = fadeIn(tween(300)) + slideInVertically(tween(300), initialOffsetY = { it / 2 }),
                             exit = fadeOut()
                         ) {
-                            RouteSummaryCard(onConfirmRoute = { handleCloseSheet() })
+                            RouteSummaryCard(route = state.route, onConfirmRoute = { handleCloseSheet() })
                         }
                     }
                 }
@@ -334,28 +379,6 @@ private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint:
     }
 }
 
-@Composable
-private fun SearchForm(origin: String, destination: String, showResult: Boolean, onOriginChange: (String) -> Unit, onDestinationChange: (String) -> Unit, onFindRoute: () -> Unit, onConfirmRoute: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 24.dp)) {
-            SearchInput(origin, onOriginChange, "Origin", Icons.Default.LocationOn, DarkGreen)
-            SearchInput(destination, onDestinationChange, "Destination", Icons.Default.LocationOn, Red)
-        }
-        Button(onFindRoute, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
-            Icon(Icons.Default.Search, null, Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Find Route", fontWeight = FontWeight.SemiBold)
-        }
-        AnimatedVisibility(
-            visible = showResult,
-            enter = fadeIn(tween(300)) + slideInVertically(tween(300), initialOffsetY = { it / 2 }),
-            exit = fadeOut()
-        ) {
-            RouteSummaryCard(onConfirmRoute = onConfirmRoute)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchInput(value: String, onValueChange: (String) -> Unit, placeholder: String, icon: ImageVector, iconTint: Color) {
@@ -374,7 +397,7 @@ private fun SearchInput(value: String, onValueChange: (String) -> Unit, placehol
 }
 
 @Composable
-private fun RouteSummaryCard(onConfirmRoute: () -> Unit) {
+private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onConfirmRoute: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -383,9 +406,12 @@ private fun RouteSummaryCard(onConfirmRoute: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Route Summary", fontWeight = FontWeight.SemiBold)
-            RouteSummaryInfoRow(Icons.Default.Schedule, BlueishWhite, Blue, "Estimated Arrival", "25 minutes")
-            RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", "12.5 km")
-            RouteSummaryInfoRow(Icons.Default.CheckCircle, GreenishGrey, DarkGreen, "AI Risk Assessment", "Safe Route ✓", DarkGreen)
+            val eta = route?.duration ?: "--"
+            val dist = route?.distance ?: "--"
+            val summary = route?.summary ?: "--"
+            RouteSummaryInfoRow(Icons.Default.Schedule, BlueishWhite, Blue, "Estimated Arrival", eta)
+            RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", dist)
+            RouteSummaryInfoRow(Icons.Default.CheckCircle, GreenishGrey, DarkGreen, "Route Summary", summary)
             Spacer(Modifier.height(4.dp))
             Button(onConfirmRoute, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
                 Text("Confirm Route", fontWeight = FontWeight.SemiBold)
@@ -425,14 +451,10 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     encodedPolyline: String? = null,
     markers: List<LatLng> = emptyList(),
-    // Default initial center changed to New York City (40.7128, -74.0060)
-    initialCenter: LatLng = LatLng(40.7128, -74.0060),
-    initialZoom: Float = 12f,
+    // cameraPositionState is provided by the parent so it can control camera movements
+    cameraPositionState: com.google.maps.android.compose.CameraPositionState,
     locationPermissionGranted: Boolean = false
 ) {
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(initialCenter, initialZoom)
-    }
 
     val properties = com.google.maps.android.compose.MapProperties(
         isMyLocationEnabled = locationPermissionGranted
