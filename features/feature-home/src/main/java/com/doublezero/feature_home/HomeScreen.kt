@@ -425,7 +425,8 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     encodedPolyline: String? = null,
     markers: List<LatLng> = emptyList(),
-    initialCenter: LatLng = LatLng(37.5665, 126.9780),
+    // Default initial center changed to New York City (40.7128, -74.0060)
+    initialCenter: LatLng = LatLng(40.7128, -74.0060),
     initialZoom: Float = 12f,
     locationPermissionGranted: Boolean = false
 ) {
