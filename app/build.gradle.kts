@@ -6,8 +6,20 @@ plugins {
 
     alias(libs.plugins.hilt.gradle)
     alias(libs.plugins.google.ksp)
-
 }
+
+import java.util.Properties
+
+// load local.properties for MAPS_API_KEY
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) {
+        f.inputStream().use { load(it) }
+    }
+}
+
+// compute mapsKey before android block
+val mapsKey = (localProps.getProperty("MAPS_API_KEY") ?: "").trim('"')
 
 android {
     namespace = "com.doublezero.app"
@@ -21,6 +33,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // provide google maps key to AndroidManifest via manifest placeholders
+        manifestPlaceholders["googleMapsKey"] = mapsKey
     }
 
     buildTypes {
@@ -47,6 +61,7 @@ dependencies {
     implementation(project(":shared"))
     implementation(project(":features:feature-home"))
     implementation(project(":features:feature-mypage"))
+    implementation(project(":data"))
 
 
     implementation(libs.androidx.compose.material.icons.extended)

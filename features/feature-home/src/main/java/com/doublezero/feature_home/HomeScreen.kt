@@ -43,6 +43,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,6 +63,25 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// New imports for Maps and permissions
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.content.pm.PackageManager
+import android.provider.Settings
+
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberUpdatedMarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.PolyUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +95,23 @@ fun HomeScreen(
     var origin by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var showResult by remember { mutableStateOf(false) }
+
+    // Map related state
+    var locationPermissionGranted by remember { mutableStateOf(false) }
+    val permissionStatusMessage = remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        locationPermissionGranted = granted
+        permissionStatusMessage.value = if (granted) "Permission: GRANTED" else "Permission: DENIED"
+    }
+
+    LaunchedEffect(Unit) {
+        // check current permission
+        locationPermissionGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        permissionStatusMessage.value = if (locationPermissionGranted) "Permission: GRANTED" else "Permission: DENIED"
+    }
 
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
         skipPartiallyExpanded = false
@@ -96,7 +133,56 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        MapPlaceholder(Modifier.fillMaxSize())
+        // Always show the Map (so tiles load even if user hasn't granted location permission).
+        // We won't enable "my location" features unless permission is granted.
+        MapScreen(
+            encodedPolyline = null,
+            markers = listOf(LatLng(37.5665, 126.9780)),
+            locationPermissionGranted = locationPermissionGranted,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // If permission is not granted, show a small overlay with a button to request it.
+        if (!locationPermissionGranted) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+                    .width(320.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = BrightWhite)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Location access needed", fontWeight = FontWeight.SemiBold)
+                        Text("Allow location to enable better routing and centering.", fontSize = 12.sp, color = SomewhatGrey)
+                        Spacer(Modifier.height(6.dp))
+                        Text(permissionStatusMessage.value, fontSize = 12.sp, color = SomewhatGrey)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Button(onClick = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) {
+                            Text("Allow")
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        TextButton(onClick = {
+                            // open app settings so user can manually enable permission
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }) {
+                            Text("Open Settings")
+                        }
+                    }
+                }
+            }
+        }
 
         if (showSheet) {
             androidx.compose.material3.ModalBottomSheet(
@@ -260,6 +346,46 @@ private fun MapPlaceholder(modifier: Modifier = Modifier) {
             Icon(Icons.Default.Navigation, null, Modifier.size(64.dp).alpha(0.4f), tint = SomewhatGrey)
             Text("Map View", color = SomewhatGrey, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
             Text("Google Maps SDK Integration", color = SomewhatGrey, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+// New MapScreen composable using Maps Compose
+@Composable
+fun MapScreen(
+    modifier: Modifier = Modifier,
+    encodedPolyline: String? = null,
+    markers: List<LatLng> = emptyList(),
+    initialCenter: LatLng = LatLng(37.5665, 126.9780),
+    initialZoom: Float = 12f,
+    locationPermissionGranted: Boolean = false
+) {
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(initialCenter, initialZoom)
+    }
+
+    val properties = com.google.maps.android.compose.MapProperties(
+        isMyLocationEnabled = locationPermissionGranted
+    )
+    val uiSettings = com.google.maps.android.compose.MapUiSettings(
+        myLocationButtonEnabled = locationPermissionGranted
+    )
+
+    GoogleMap(
+        modifier = modifier,
+        cameraPositionState = cameraPositionState,
+        properties = properties,
+        uiSettings = uiSettings
+    ) {
+        markers.forEach { latLng ->
+            Marker(state = rememberUpdatedMarkerState(position = latLng), title = "Place")
+        }
+
+        encodedPolyline?.takeIf { it.isNotBlank() }?.let { enc ->
+            val path = remember(enc) {
+                PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
+            }
+            Polyline(points = path)
         }
     }
 }

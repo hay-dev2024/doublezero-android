@@ -4,6 +4,10 @@ import com.doublezero.data.repository.AuthRepository
 import com.doublezero.data.repository.AuthRepositoryImpl
 import com.doublezero.data.repository.TripRepository
 import com.doublezero.data.repository.TripRepositoryImpl
+import com.doublezero.data.repository.NavigationRepository
+import com.doublezero.data.repository.NavigationRepositoryImpl
+import com.doublezero.data.repository.PlacesRepository
+import com.doublezero.data.repository.PlacesRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +29,16 @@ abstract class DataModule {
     abstract fun bindTripRepository(
         tripRepositoryImpl: TripRepositoryImpl
     ): TripRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNavigationRepository(
+        impl: NavigationRepositoryImpl
+    ): NavigationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPlacesRepository(
+        impl: PlacesRepositoryImpl
+    ): PlacesRepository
 }
