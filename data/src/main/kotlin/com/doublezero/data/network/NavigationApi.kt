@@ -17,11 +17,15 @@ data class RouteRequestDto(
     val travelMode: String = "DRIVE"
 )
 
+// Add numeric fields and maneuver to StepDto to match backend improvements
 data class StepDto(
     val distance: String?,
     val duration: String?,
     val instruction: String?,
-    val polyline: String?
+    val polyline: String?,
+    val distanceMeters: Long? = null,
+    val durationSeconds: Long? = null,
+    val maneuver: String? = null
 )
 
 data class RouteDto(

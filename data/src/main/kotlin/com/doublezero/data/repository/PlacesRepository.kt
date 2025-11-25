@@ -1,11 +1,10 @@
 package com.doublezero.data.repository
 
-import com.doublezero.data.network.PlaceAutocompleteSuggestionDto
-import com.doublezero.data.network.PlaceResponseDto
+import com.doublezero.data.network.PlaceSuggestionDto
+import com.doublezero.data.network.PlaceDto
 
 interface PlacesRepository {
-    suspend fun searchPlaces(query: String): List<PlaceResponseDto>
-    suspend fun autocomplete(input: String, lat: Double? = null, lon: Double? = null): List<PlaceAutocompleteSuggestionDto>
-    suspend fun getPlaceDetails(placeId: String): PlaceResponseDto?
+    suspend fun searchPlaces(query: String): List<PlaceDto>
+    suspend fun autocomplete(input: String, lat: Double? = null, lon: Double? = null): List<PlaceSuggestionDto>
+    suspend fun getPlaceDetails(placeId: String): PlaceDto?
 }
-

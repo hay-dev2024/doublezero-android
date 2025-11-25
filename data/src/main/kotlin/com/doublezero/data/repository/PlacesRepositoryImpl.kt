@@ -1,7 +1,7 @@
 package com.doublezero.data.repository
 
-import com.doublezero.data.network.PlaceAutocompleteSuggestionDto
-import com.doublezero.data.network.PlaceResponseDto
+import com.doublezero.data.network.PlaceSuggestionDto
+import com.doublezero.data.network.PlaceDto
 import com.doublezero.data.network.PlacesApi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -26,7 +26,7 @@ class PlacesRepositoryImpl @Inject constructor(): PlacesRepository {
 
     private val api: PlacesApi by lazy { retrofit.create(PlacesApi::class.java) }
 
-    override suspend fun searchPlaces(query: String): List<PlaceResponseDto> {
+    override suspend fun searchPlaces(query: String): List<PlaceDto> {
         return try {
             val resp = api.searchPlaces(com.doublezero.data.network.PlaceSearchRequestDto(query))
             if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
@@ -35,7 +35,7 @@ class PlacesRepositoryImpl @Inject constructor(): PlacesRepository {
         }
     }
 
-    override suspend fun autocomplete(input: String, lat: Double?, lon: Double?): List<PlaceAutocompleteSuggestionDto> {
+    override suspend fun autocomplete(input: String, lat: Double?, lon: Double?): List<PlaceSuggestionDto> {
         return try {
             val resp = api.autocomplete(input, lat, lon)
             if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
@@ -44,7 +44,7 @@ class PlacesRepositoryImpl @Inject constructor(): PlacesRepository {
         }
     }
 
-    override suspend fun getPlaceDetails(placeId: String): PlaceResponseDto? {
+    override suspend fun getPlaceDetails(placeId: String): PlaceDto? {
         return try {
             val resp = api.getPlaceDetails(placeId)
             if (resp.isSuccessful) resp.body() else null
@@ -53,4 +53,3 @@ class PlacesRepositoryImpl @Inject constructor(): PlacesRepository {
         }
     }
 }
-

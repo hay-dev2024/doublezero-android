@@ -10,34 +10,20 @@ import retrofit2.http.Query
 // Places DTOs
 data class PlaceSearchRequestDto(val query: String)
 
-data class PlaceResponseDto(
-    val placeId: String,
-    val name: String,
-    val formattedAddress: String,
-    val lat: Double,
-    val lon: Double,
-    val types: List<String>
-)
-
-data class PlaceAutocompleteSuggestionDto(
-    val placeId: String,
-    val description: String,
-    val mainText: String,
-    val secondaryText: String
-)
+// Use the shared PlaceDto (defined in java source) for responses
+// (avoid duplicate Response DTO class)
 
 interface PlacesApi {
     @POST("/places/search")
-    suspend fun searchPlaces(@Body dto: PlaceSearchRequestDto): Response<List<PlaceResponseDto>>
+    suspend fun searchPlaces(@Body dto: PlaceSearchRequestDto): Response<List<com.doublezero.data.network.PlaceDto>>
 
     @GET("/places/autocomplete")
     suspend fun autocomplete(
         @Query("input") input: String,
         @Query("lat") lat: Double? = null,
         @Query("lon") lon: Double? = null
-    ): Response<List<PlaceAutocompleteSuggestionDto>>
+    ): Response<List<com.doublezero.data.network.PlaceSuggestionDto>>
 
     @GET("/places/{placeId}")
-    suspend fun getPlaceDetails(@Path("placeId") placeId: String): Response<PlaceResponseDto>
+    suspend fun getPlaceDetails(@Path("placeId") placeId: String): Response<com.doublezero.data.network.PlaceDto>
 }
-

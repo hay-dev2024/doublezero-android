@@ -315,9 +315,10 @@ fun HomeScreen(
                         val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
                         RouteSummaryCard(
                             route = selectedRoute,
-                            originName = state.selectedOrigin?.name ?: origin,
-                            destinationName = state.selectedDestination?.name ?: destination,
+                            originName = (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.name ?: origin,
+                            destinationName = (state.selectedDestination as? com.doublezero.data.network.PlaceDto)?.name ?: destination,
                             onDrive = {
+                                // start simulation with default tuned parameters
                                 viewModel.startSimulation()
                                 handleCloseSheet()
                             }
@@ -370,7 +371,7 @@ fun HomeScreen(
                             // Suggestions list
                             if (state.suggestions.isNotEmpty()) {
                                 LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                                    items(state.suggestions) { suggestion ->
+                                    items(state.suggestions) { suggestion: com.doublezero.data.network.PlaceSuggestionDto ->
                                         Card(modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 4.dp)
@@ -407,8 +408,8 @@ fun HomeScreen(
             }
         }
 
-        // Route options bar: show only when NOT simulating
-        if (state.routes.isNotEmpty() && !state.isSimulating) {
+        // Route options bar: show only when NOT simulating and steps sheet not visible
+        if (state.routes.isNotEmpty() && !state.isSimulating && !showStepsSheet) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 RouteOptionsBar(
                     routes = state.routes,
@@ -458,7 +459,7 @@ fun HomeScreen(
                     Spacer(Modifier.height(8.dp))
                     sel?.steps?.let { steps ->
                         LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
-                            items(steps) { step ->
+                            items(steps) { step: com.doublezero.data.network.StepDto ->
                                 Column(modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp)) {

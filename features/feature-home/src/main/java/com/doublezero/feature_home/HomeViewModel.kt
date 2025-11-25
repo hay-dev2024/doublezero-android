@@ -7,6 +7,7 @@ import com.google.maps.android.PolyUtil
 import com.doublezero.data.repository.NavigationRepository
 import com.doublezero.data.repository.PlacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,25 +25,26 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-data class HomeUiState(
-    // Use the actual DTO types returned by the data module APIs
-    val suggestions: List<com.doublezero.data.network.PlaceAutocompleteSuggestionDto> = emptyList(),
-    val selectedOrigin: com.doublezero.data.network.PlaceResponseDto? = null,
-    val selectedDestination: com.doublezero.data.network.PlaceResponseDto? = null,
-    val routes: List<com.doublezero.data.network.RouteDto> = emptyList(),
-    val selectedRouteIndex: Int = -1,
-    val error: String? = null,
-    // Simulation State
-    val isSimulating: Boolean = false,
-    val simPosition: LatLng? = null,
-    val simStepIndex: Int = -1
-)
-
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val placesRepository: PlacesRepository,
     private val navigationRepository: NavigationRepository
 ) : ViewModel() {
+
+    data class HomeUiState(
+        // Use the actual DTO types returned by the data module APIs
+        val suggestions: List<com.doublezero.data.network.PlaceSuggestionDto> = emptyList(),
+        val selectedOrigin: com.doublezero.data.network.PlaceDto? = null,
+        val selectedDestination: com.doublezero.data.network.PlaceDto? = null,
+        val routes: List<com.doublezero.data.network.RouteDto> = emptyList(),
+        val selectedRouteIndex: Int = -1,
+        val error: String? = null,
+        // Simulation State
+        val isSimulating: Boolean = false,
+        val simPosition: LatLng? = null,
+        val simStepIndex: Int = -1
+    )
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -140,55 +142,143 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(selectedRouteIndex = index) }
     }
 
-    fun startSimulation() {
+    /**
+     * Start simulation using per-step durations when available.
+     * - speedMultiplier: multiplies real-world speed (higher => faster simulation)
+     * - maneuverPauseMs: pause duration at steps with maneuvers (in ms)
+     * - updateIntervalMs: how often to update simPosition (in ms)
+     */
+    fun startSimulation(
+        speedMultiplier: Float = 5.5f,
+        maneuverPauseMs: Long = 1500L,
+        updateIntervalMs: Long = 50L
+    ) {
         simulationJob?.cancel() // Cancel any previous simulation
         val route = _uiState.value.routes.getOrNull(_uiState.value.selectedRouteIndex)
         if (route == null) return
 
-        // handle nullable polyline safely
-        val polyline = route.polyline ?: return
-        if (polyline.isBlank()) return
-
-        val pathPoints = try {
-            PolyUtil.decode(polyline)
-        } catch (e: Exception) {
-            emptyList()
-        }
-        if (pathPoints.isEmpty()) return
-
-        _uiState.update { it.copy(isSimulating = true, simStepIndex = 0) }
+        // If steps are present and have per-step info, prefer step-wise simulation
+        val steps = route.steps
 
         simulationJob = viewModelScope.launch {
-            // The total duration is taken from the route data, with a fallback (minutes -> ms)
-            val totalDurationMinutes = route.duration?.split(" ")?.firstOrNull()?.toLongOrNull() ?: 60L
-            val totalDurationMs = totalDurationMinutes * 60 * 1000
-            // Make simulation faster: speed multiplier (adjustable)
-            val simulationSpeedMultiplier = 5.5f
-            val effectiveTotalDurationMs = (totalDurationMs / simulationSpeedMultiplier).toLong()
-            val startTime = System.currentTimeMillis()
+            _uiState.update { it.copy(isSimulating = true, simStepIndex = 0) }
 
-            while (_uiState.value.isSimulating) {
-                val elapsedTime = System.currentTimeMillis() - startTime
-                val fraction = (elapsedTime.toFloat() / effectiveTotalDurationMs).coerceIn(0f, 1f)
+            try {
+                if (!steps.isNullOrEmpty()) {
+                    // Step-wise simulation
+                    for ((stepIndex, step) in steps.withIndex()) {
+                        // decode step polyline if available, else fallback to empty list
+                        val stepPoints = try { PolyUtil.decode(step.polyline ?: "") } catch (e: Exception) { emptyList() }
+                        if (stepPoints.isEmpty()) {
+                            // no segment points; continue
+                            _uiState.update { it.copy(simStepIndex = stepIndex) }
+                            continue
+                        }
 
-                if (fraction >= 1f) {
-                    _uiState.update { it.copy(simPosition = pathPoints.last()) }
+                        // determine step duration in ms
+                        val stepDurationSeconds = step.durationSeconds ?: run {
+                            // try parsing string duration like "4 min"
+                            step.duration?.split(" ")?.firstOrNull()?.toLongOrNull()
+                        } ?: 60L
+                        val effectiveMs = (stepDurationSeconds * 1000L / speedMultiplier).toLong().coerceAtLeast(updateIntervalMs)
+
+                        // precompute cumulative distances for interpolation within this step
+                        val pts = stepPoints.map { LatLng(it.latitude, it.longitude) }
+                        val segmentDistances = pts.zipWithNext { a, b -> distanceBetweenMeters(a, b) }
+                        val totalStepDistance = segmentDistances.sum().coerceAtLeast(1.0)
+
+                        val startTime = System.currentTimeMillis()
+                        while (true) {
+                            val elapsed = System.currentTimeMillis() - startTime
+                            val frac = (elapsed.toDouble() / effectiveMs).coerceIn(0.0, 1.0)
+
+                            // compute position along step based on distance fraction
+                            val targetDistance = totalStepDistance * frac
+                            var acc = 0.0
+                            var pos: LatLng = pts.first()
+                            for (i in 0 until pts.size - 1) {
+                                val segDist = segmentDistances.getOrNull(i) ?: 0.0
+                                if (acc + segDist >= targetDistance) {
+                                    val segFrac = if (segDist <= 0.0) 0.0 else (targetDistance - acc) / segDist
+                                    val s = pts[i]
+                                    val e = pts[i + 1]
+                                    pos = LatLng(
+                                        s.latitude + (e.latitude - s.latitude) * segFrac,
+                                        s.longitude + (e.longitude - s.longitude) * segFrac
+                                    )
+                                    break
+                                }
+                                acc += segDist
+                            }
+
+                            _uiState.update {
+                                it.copy(
+                                    simPosition = pos,
+                                    simStepIndex = stepIndex
+                                )
+                            }
+
+                            if (frac >= 1.0) break
+                            delay(updateIntervalMs)
+                        }
+
+                        // after finishing step, if maneuver exists, brief pause to simulate signal/turn
+                        val maneuver = step.maneuver?.uppercase()
+                        if (maneuver != null && maneuver.isNotBlank()) {
+                            // choose short pause durations for turn-like maneuvers
+                            val turnSet = setOf("TURN_LEFT", "TURN_RIGHT", "UTURN", "DEPART")
+                            if (maneuver in turnSet) {
+                                delay(maneuverPauseMs)
+                            }
+                        }
+
+                        // loop continues to next step
+                    }
+
+                    // simulation finished
+                    _uiState.update { it.copy(isSimulating = false, simStepIndex = -1) }
+
+                } else {
+                    // Fallback: simulate along whole polyline using existing logic
+                    val polyline = route.polyline ?: ""
+                    val pathPoints = try { PolyUtil.decode(polyline) } catch (e: Exception) { emptyList() }
+                    if (pathPoints.isEmpty()) {
+                        _uiState.update { it.copy(isSimulating = false, simStepIndex = -1) }
+                        return@launch
+                    }
+
+                    // The total duration is taken from the route data, with a fallback (minutes -> ms)
+                    val totalDurationMinutes = route.duration?.split(" ")?.firstOrNull()?.toLongOrNull() ?: 60L
+                    val totalDurationMs = totalDurationMinutes * 60 * 1000
+                    val effectiveTotalDurationMs = (totalDurationMs / speedMultiplier).toLong()
+                    val startTime = System.currentTimeMillis()
+
+                    while (_uiState.value.isSimulating) {
+                        val elapsedTime = System.currentTimeMillis() - startTime
+                        val fraction = (elapsedTime.toFloat() / effectiveTotalDurationMs).coerceIn(0f, 1f)
+
+                        if (fraction >= 1f) {
+                            _uiState.update { it.copy(simPosition = pathPoints.last()) }
+                            break
+                        }
+
+                        val currentPos = getPointAtFraction(pathPoints, fraction)
+                        val currentStepIndex = findStepIndexForPosition(route.steps, pathPoints, currentPos)
+
+                        _uiState.update {
+                            it.copy(
+                                simPosition = currentPos,
+                                simStepIndex = currentStepIndex
+                            )
+                        }
+                        delay(updateIntervalMs)
+                    }
+
                     stopSimulation()
-                    break
                 }
-
-                // Get the precise point on the path for the current fraction of time
-                val currentPos = getPointAtFraction(pathPoints, fraction)
-                // Find which step of the directions corresponds to the current position
-                val currentStepIndex = findStepIndexForPosition(route.steps, pathPoints, currentPos)
-
-                _uiState.update {
-                    it.copy(
-                        simPosition = currentPos,
-                        simStepIndex = currentStepIndex
-                    )
-                }
-                delay(50) // Update every 50ms for smoother & faster animation
+            } catch (e: Exception) {
+                // ensure we reset sim state on failure
+                _uiState.update { it.copy(isSimulating = false, simPosition = null, simStepIndex = -1) }
             }
         }
     }
