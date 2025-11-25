@@ -84,7 +84,8 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
-import com.google.android.gms.maps.CameraUpdateFactory // Added import
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.maps.android.compose.CameraPositionState
 
 // New lifecycle/hilt imports
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -113,11 +114,6 @@ fun HomeScreen(
     var showResult by remember { mutableStateOf(false) }
     var selectingForOrigin by remember { mutableStateOf(true) }
 
-    // Simulation / turn-by-turn state
-    var isSimulating by remember { mutableStateOf(false) }
-    var simPosition by remember { mutableStateOf<LatLng?>(null) }
-    var simStepIndex by remember { mutableStateOf(-1) }
-
     // Map related state
     var locationPermissionGranted by remember { mutableStateOf(false) }
     val permissionStatusMessage = remember { mutableStateOf("") }
@@ -143,64 +139,6 @@ fun HomeScreen(
         if (openSearch) {
             showSheet = true
         }
-    }
-
-    // Simulation: move along selected route polyline periodically
-    LaunchedEffect(isSimulating, state.routes, state.selectedRouteIndex) {
-        if (!isSimulating) return@LaunchedEffect
-        val route = state.routes.getOrNull(state.selectedRouteIndex)
-        if (route == null || route.polyline.isNullOrBlank()) {
-            isSimulating = false
-            return@LaunchedEffect
-        }
-        // decode polyline to points
-        val pathPoints = try {
-            PolyUtil.decode(route.polyline!!).map { LatLng(it.latitude, it.longitude) }
-        } catch (e: Exception) {
-            emptyList()
-        }
-        if (pathPoints.isEmpty()) {
-            isSimulating = false
-            return@LaunchedEffect
-        }
-
-        // iterate along the polyline points to simulate motion
-        for (i in pathPoints.indices) {
-            if (!isSimulating) break
-            val p = pathPoints[i]
-            simPosition = p
-            // update current step by finding nearest step center
-            val steps = route.steps ?: emptyList()
-            var nearest = -1
-            var nearestDist = Double.MAX_VALUE
-            steps.forEachIndexed { sIdx, step ->
-                val stepCenter = step.polyline?.takeIf { it.isNotBlank() }?.let { pl ->
-                    try {
-                        val pts = PolyUtil.decode(pl)
-                        if (pts.isNotEmpty()) LatLng(pts[pts.size / 2].latitude, pts[pts.size / 2].longitude) else null
-                    } catch (_: Exception) { null }
-                }
-                stepCenter?.let { sc ->
-                    val d = distanceBetweenMeters(p.latitude, p.longitude, sc.latitude, sc.longitude)
-                    if (d < nearestDist) {
-                        nearest = sIdx
-                        nearestDist = d
-                    }
-                }
-            }
-            simStepIndex = nearest
-
-            // animate camera a bit to follow the simulated position
-            try {
-                // cameraPositionState is available in this scope (declared later) — we'll animate via a snapshot effect below after camera defined
-            } catch (_: Exception) { }
-
-            // sleep between points (speed tuning)
-            delay(600L)
-        }
-
-        // finished
-        isSimulating = false
     }
 
     // react to selected origin/destination from VM to update text fields
@@ -229,9 +167,9 @@ fun HomeScreen(
             position = CameraPosition.fromLatLngZoom(LatLng(40.7128, -74.0060), 12f)
         }
 
-        // keep camera follow effect for simPosition
-        LaunchedEffect(simPosition) {
-            simPosition?.let { sp ->
+        // keep camera follow effect for simPosition from ViewModel
+        LaunchedEffect(state.simPosition) {
+            state.simPosition?.let { sp ->
                 try {
                     cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(sp, 16f))
                 } catch (_: Exception) { }
@@ -248,7 +186,7 @@ fun HomeScreen(
             locationPermissionGranted = locationPermissionGranted,
             cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize(),
-            simulatedPosition = simPosition
+            simulatedPosition = state.simPosition
         )
 
         // When routes change, animate camera to fit the selected route (if possible)
@@ -286,13 +224,13 @@ fun HomeScreen(
                     }
                 } ?: run {
                     // no polyline -> if origin selected, center to origin
-                    state.selectedOrigin?.let {
+                    (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
                         cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
                     }
                 }
             } else {
                 // no routes: if origin exists, center to origin
-                state.selectedOrigin?.let {
+                (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
                     cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
                 }
             }
@@ -450,7 +388,7 @@ fun HomeScreen(
         }
 
         // Route options bar: show only when NOT simulating
-        if (state.routes.isNotEmpty() && !isSimulating) {
+        if (state.routes.isNotEmpty() && !state.isSimulating) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 RouteOptionsBar(
                     routes = state.routes,
@@ -473,18 +411,16 @@ fun HomeScreen(
             if (hasRoute) {
                 androidx.compose.material3.FloatingActionButton(
                     onClick = {
-                        if (isSimulating) {
-                            isSimulating = false
+                        if (state.isSimulating) {
+                            viewModel.stopSimulation()
                         } else {
-                            simStepIndex = -1
-                            simPosition = null
-                            isSimulating = true
+                            viewModel.startSimulation()
                         }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 16.dp, bottom = 140.dp),
-                    containerColor = if (isSimulating) Color.Red else Blue
+                    containerColor = if (state.isSimulating) Color.Red else Blue
                 ) {
                     Icon(Icons.Default.Navigation, null, tint = Color.White)
                 }
@@ -492,9 +428,9 @@ fun HomeScreen(
         }
 
         // Simulation instruction overlay
-        if (isSimulating) {
+        if (state.isSimulating) {
             val selRoute = state.routes.getOrNull(state.selectedRouteIndex)
-            val step = selRoute?.steps?.getOrNull(simStepIndex)
+            val step = selRoute?.steps?.getOrNull(state.simStepIndex)
             Card(modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 24.dp)
@@ -753,15 +689,16 @@ private fun RouteOptionsBar(
                 shape = RoundedCornerShape(12.dp),
                 colors = if (selected) CardDefaults.cardColors(containerColor = Color(0xFF0D47A1)) else CardDefaults.cardColors(containerColor = BrightWhite)
             ) {
-                Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 10.dp, horizontal = 10.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(if (idx == 0) "Primary" else "Alternate", fontSize = 12.sp, color = if (selected) Color.White else Grey)
                     Spacer(Modifier.height(4.dp))
                     Text(route.duration ?: "--", fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Blue)
                     Text(route.distance ?: "--", fontSize = 12.sp, color = if (selected) Color.White else Grey)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-
-                    }
                 }
             }
         }
@@ -793,12 +730,3 @@ private fun HomeScreenSearchOpenPreview() {
     }
 }
 
-// helper: distance in meters between two lat/lon points
-private fun distanceBetweenMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val r = 6371000.0 // earth radius in meters
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-    val a = sin(dLat / 2).pow(2.0) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2.0)
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    return r * c
-}
