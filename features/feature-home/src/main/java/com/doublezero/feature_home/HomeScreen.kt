@@ -279,20 +279,6 @@ fun HomeScreen(
             }
         }
 
-        // Debug overlay: show how many routes are currently in state
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(containerColor = BrightWhite)
-        ) {
-            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Routes: ", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                Text(state.routes.size.toString(), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Blue)
-            }
-        }
-
         if (showSheet) {
             androidx.compose.material3.ModalBottomSheet(
                 onDismissRequest = { handleCloseSheet() },
@@ -381,7 +367,11 @@ fun HomeScreen(
                             exit = fadeOut()
                         ) {
                             val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
-                            RouteSummaryCard(route = selectedRoute, onConfirmRoute = { handleCloseSheet() })
+                            RouteSummaryCard(route = selectedRoute, onConfirmRoute = { handleCloseSheet() }, onDrive = {
+                                // Start simulation and close sheet
+                                viewModel.startSimulation()
+                                handleCloseSheet()
+                            })
                         }
                     }
                 }
@@ -403,28 +393,6 @@ fun HomeScreen(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 86.dp) // above bottom nav
                 )
-            }
-        }
-
-        // Simulation control FAB
-        if (state.routes.isNotEmpty()) {
-            val hasRoute = state.routes.getOrNull(state.selectedRouteIndex) != null
-            if (hasRoute) {
-                androidx.compose.material3.FloatingActionButton(
-                    onClick = {
-                        if (state.isSimulating) {
-                            viewModel.stopSimulation()
-                        } else {
-                            viewModel.startSimulation()
-                        }
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 140.dp),
-                    containerColor = if (state.isSimulating) Color.Red else Blue
-                ) {
-                    Icon(Icons.Default.Navigation, null, tint = Color.White)
-                }
             }
         }
 
@@ -529,7 +497,7 @@ private fun SearchInput(value: String, onValueChange: (String) -> Unit, placehol
 }
 
 @Composable
-private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onConfirmRoute: () -> Unit) {
+private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onConfirmRoute: () -> Unit, onDrive: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -545,8 +513,18 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onCon
             RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", dist)
             RouteSummaryInfoRow(Icons.Default.CheckCircle, GreenishGrey, DarkGreen, "Route Summary", summary)
             Spacer(Modifier.height(4.dp))
-            Button(onConfirmRoute, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-                Text("Confirm Route", fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Drive button starts simulation
+                Button(onClick = { onDrive() }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    Icon(Icons.Default.Navigation, null, Modifier.size(18.dp), tint = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Drive", fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+
+                // Confirm Route kept for dismiss/confirm behavior
+                Button(onClick = onConfirmRoute, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    Text("Confirm Route", fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
             }
         }
     }
