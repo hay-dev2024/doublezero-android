@@ -1,5 +1,6 @@
 package com.doublezero.data.repository
 
+import android.util.Log
 import com.doublezero.data.network.LatLonDto
 import com.doublezero.data.network.NavigationApi
 import com.doublezero.data.network.RouteRequestDto
@@ -28,23 +29,40 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
 
     private val navigationApi: NavigationApi by lazy { retrofit.create(NavigationApi::class.java) }
 
-    override suspend fun computeRoute(originLat: Double, originLng: Double, destLat: Double, destLng: Double, token: String?): RouteDto? {
+    override suspend fun computeRoute(
+        originLat: Double,
+        originLng: Double,
+        destLat: Double,
+        destLng: Double,
+        token: String?
+    ): List<RouteDto> {
         val req = RouteRequestDto(
             origin = LatLonDto(originLat, originLng),
-            destination = LatLonDto(destLat, destLng)
+            destination = LatLonDto(destLat, destLng),
+            // ask server to compute one alternative route if available
+            alternatives = true,
         )
 
         return try {
             val authHeader = token?.let { "Bearer $it" }
             val resp = navigationApi.computeRoute(req, authHeader)
             if (resp.isSuccessful) {
-                resp.body()?.routes?.firstOrNull()
+                val routes = resp.body()?.routes ?: emptyList()
+                // limit to at most 2 routes (primary + one alternative)
+                val limited = if (routes.size > 2) routes.take(2) else routes
+                // Debug log: show how many routes backend returned vs limited
+                try {
+                    Log.d("NavRepo", "computeRoute: received ${routes.size} routes from backend, limited to ${limited.size}")
+                } catch (_: Throwable) {
+                    // ignore logging errors in non-Android test contexts
+                }
+                limited
             } else {
-                null
+                emptyList()
             }
         } catch (e: Exception) {
-            // network error or parsing error -> return null so caller can handle fallback
-            null
+            // network error or parsing error -> return empty list so caller can handle fallback
+            emptyList()
         }
     }
 }

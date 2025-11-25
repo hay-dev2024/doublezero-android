@@ -12,6 +12,8 @@ data class LatLonDto(val lat: Double, val lon: Double)
 data class RouteRequestDto(
     val origin: LatLonDto,
     val destination: LatLonDto,
+    // Request alternative routes (optional). Backend default is false.
+    val alternatives: Boolean? = null,
     val travelMode: String = "DRIVE"
 )
 

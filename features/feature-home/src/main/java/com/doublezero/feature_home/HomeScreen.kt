@@ -142,8 +142,8 @@ fun HomeScreen(
     LaunchedEffect(state.selectedDestination) {
         state.selectedDestination?.let { destination = it.name }
     }
-    LaunchedEffect(state.route) {
-        showResult = state.route != null
+    LaunchedEffect(state.routes) {
+        showResult = state.routes.isNotEmpty()
     }
 
     fun handleCloseSheet() {
@@ -162,49 +162,56 @@ fun HomeScreen(
         }
 
         // Always show the Map (so tiles load even if user hasn't granted location permission).
-        MapScreen(
-            encodedPolyline = state.route?.polyline,
-            markers = listOfNotNull(
-                state.selectedOrigin?.let { LatLng(it.lat, it.lon) },
-                state.selectedDestination?.let { LatLng(it.lat, it.lon) }
-            ),
+        MapScreenRoutes(
+            routes = state.routes,
+            selectedIndex = state.selectedRouteIndex,
+            onSelect = { idx -> viewModel.selectRoute(idx) },
             locationPermissionGranted = locationPermissionGranted,
             cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize()
         )
 
-        // When a new route is available, animate camera to fit the route bounds (if possible)
-        LaunchedEffect(state.route) {
-            state.route?.polyline?.takeIf { it.isNotBlank() }?.let { enc ->
-                try {
-                    val points = PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
-                    if (points.isNotEmpty()) {
-                        val lats = points.map { it.latitude }
-                        val lons = points.map { it.longitude }
-                        val north = lats.maxOrNull() ?: 0.0
-                        val south = lats.minOrNull() ?: 0.0
-                        val east = lons.maxOrNull() ?: 0.0
-                        val west = lons.minOrNull() ?: 0.0
-                        val centerLat = (north + south) / 2.0
-                        val centerLon = (east + west) / 2.0
-                        val latSpan = north - south
-                        val lonSpan = east - west
-                        val span = maxOf(latSpan, lonSpan)
-                        // simple heuristic for zoom based on span
-                        val zoom = when {
-                            span < 0.01 -> 15f
-                            span < 0.05 -> 14f
-                            span < 0.25 -> 12f
-                            span < 1.0 -> 10f
-                            else -> 8f
+        // When routes change, animate camera to fit the selected route (if possible)
+        LaunchedEffect(state.routes, state.selectedRouteIndex) {
+            if (state.routes.isNotEmpty()) {
+                val idx = state.selectedRouteIndex.takeIf { it >= 0 } ?: 0
+                val selected = state.routes.getOrNull(idx)
+                selected?.polyline?.takeIf { it.isNotBlank() }?.let { enc ->
+                    try {
+                        val points = PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
+                        if (points.isNotEmpty()) {
+                            val lats = points.map { it.latitude }
+                            val lons = points.map { it.longitude }
+                            val north = lats.maxOrNull() ?: 0.0
+                            val south = lats.minOrNull() ?: 0.0
+                            val east = lons.maxOrNull() ?: 0.0
+                            val west = lons.minOrNull() ?: 0.0
+                            val centerLat = (north + south) / 2.0
+                            val centerLon = (east + west) / 2.0
+                            val latSpan = north - south
+                            val lonSpan = east - west
+                            val span = maxOf(latSpan, lonSpan)
+                            // simple heuristic for zoom based on span
+                            val zoom = when {
+                                span < 0.01 -> 15f
+                                span < 0.05 -> 14f
+                                span < 0.25 -> 12f
+                                span < 1.0 -> 10f
+                                else -> 8f
+                            }
+                            cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLon), zoom)))
                         }
-                        cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLon), zoom)))
+                    } catch (_: Exception) {
+                        // ignore camera centering errors
                     }
-                } catch (_: Exception) {
-                    // ignore camera centering errors
+                } ?: run {
+                    // no polyline -> if origin selected, center to origin
+                    state.selectedOrigin?.let {
+                        cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
+                    }
                 }
-            } ?: run {
-                // no polyline -> if origin selected, center to origin
+            } else {
+                // no routes: if origin exists, center to origin
                 state.selectedOrigin?.let {
                     cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
                 }
@@ -250,6 +257,20 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // Debug overlay: show how many routes are currently in state
+        Card(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = CardDefaults.cardColors(containerColor = BrightWhite)
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Routes: ", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Text(state.routes.size.toString(), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Blue)
             }
         }
 
@@ -340,7 +361,8 @@ fun HomeScreen(
                             enter = fadeIn(tween(300)) + slideInVertically(tween(300), initialOffsetY = { it / 2 }),
                             exit = fadeOut()
                         ) {
-                            RouteSummaryCard(route = state.route, onConfirmRoute = { handleCloseSheet() })
+                            val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
+                            RouteSummaryCard(route = selectedRoute, onConfirmRoute = { handleCloseSheet() })
                         }
                     }
                 }
@@ -478,6 +500,43 @@ fun MapScreen(
                 PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
             }
             Polyline(points = path)
+        }
+    }
+}
+
+// New helper to draw multiple routes and handle selection
+@Composable
+private fun MapScreenRoutes(
+    modifier: Modifier = Modifier,
+    routes: List<com.doublezero.data.network.RouteDto> = emptyList(),
+    selectedIndex: Int = -1,
+    onSelect: (Int) -> Unit = {},
+    cameraPositionState: com.google.maps.android.compose.CameraPositionState,
+    locationPermissionGranted: Boolean = false
+) {
+    val properties = com.google.maps.android.compose.MapProperties(
+        isMyLocationEnabled = locationPermissionGranted
+    )
+    val uiSettings = com.google.maps.android.compose.MapUiSettings(
+        myLocationButtonEnabled = locationPermissionGranted
+    )
+
+    GoogleMap(
+        modifier = modifier,
+        cameraPositionState = cameraPositionState,
+        properties = properties,
+        uiSettings = uiSettings
+    ) {
+        // draw each route
+        routes.forEachIndexed { idx, route ->
+            val enc = route.polyline ?: return@forEachIndexed
+            val path = remember(enc) { PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) } }
+            if (path.isNotEmpty()) {
+                val isSelected = idx == selectedIndex
+                val color = if (isSelected) Color(0xFF0D47A1) else Color.Gray.copy(alpha = 0.6f)
+                val width = if (isSelected) 12f else 6f
+                Polyline(points = path, color = color, width = width, clickable = true, onClick = { onSelect(idx) })
+            }
         }
     }
 }

@@ -20,7 +20,8 @@ data class HomeUiState(
     val suggestions: List<PlaceAutocompleteSuggestionDto> = emptyList(),
     val selectedOrigin: PlaceResponseDto? = null,
     val selectedDestination: PlaceResponseDto? = null,
-    val route: RouteDto? = null,
+    val routes: List<RouteDto> = emptyList(),
+    val selectedRouteIndex: Int = -1,
     val error: String? = null
 )
 
@@ -90,11 +91,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
-                val route = navigationRepository.computeRoute(
+                val routes = navigationRepository.computeRoute(
                     origin.lat, origin.lon, dest.lat, dest.lon, token = null
                 )
-                if (route != null) {
-                    _uiState.value = _uiState.value.copy(route = route)
+                if (routes.isNotEmpty()) {
+                    _uiState.value = _uiState.value.copy(routes = routes, selectedRouteIndex = 0)
                 } else {
                     _uiState.value = _uiState.value.copy(error = "No route found")
                 }
@@ -104,6 +105,11 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(loading = false)
             }
         }
+    }
+
+    fun selectRoute(index: Int) {
+        if (index < 0 || index >= _uiState.value.routes.size) return
+        _uiState.value = _uiState.value.copy(selectedRouteIndex = index)
     }
 
     fun clearError() {
