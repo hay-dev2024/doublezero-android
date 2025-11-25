@@ -285,93 +285,122 @@ fun HomeScreen(
                 sheetState = sheetState,
                 dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 24.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                // Branch: if we have results (showResult), show only the summary+Drive button.
+                if (showResult) {
+                    // Minimal summary view so map remains visible
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 12.dp, bottom = 24.dp)
                     ) {
-                        Text(
-                            "Search Route",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Route Summary",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            IconButton(onClick = { handleCloseSheet() }) {
+                                Icon(Icons.Default.Close, "Close", tint = Grey)
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
+                        RouteSummaryCard(
+                            route = selectedRoute,
+                            originName = state.selectedOrigin?.name ?: origin,
+                            destinationName = state.selectedDestination?.name ?: destination,
+                            onDrive = {
+                                viewModel.startSimulation()
+                                handleCloseSheet()
+                            }
                         )
-                        IconButton(onClick = { handleCloseSheet() }) {
-                            Icon(Icons.Default.Close, "Close", tint = Grey)
-                        }
                     }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
-
-                    // Search inputs
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                            SearchInput(origin, onValueChange = {
-                                origin = it
-                                selectingForOrigin = true
-                                viewModel.onQueryChanged(it)
-                            }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
-
-                            SearchInput(destination, onValueChange = {
-                                destination = it
-                                selectingForOrigin = false
-                                viewModel.onQueryChanged(it)
-                            }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                } else {
+                    // Original search UI (keeps suggestions/inputs)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Search Route",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            IconButton(onClick = { handleCloseSheet() }) {
+                                Icon(Icons.Default.Close, "Close", tint = Grey)
+                            }
                         }
 
-                        // Suggestions list
-                        if (state.suggestions.isNotEmpty()) {
-                            LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                                items(state.suggestions) { suggestion ->
-                                    Card(modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickable {
-                                            if (selectingForOrigin) {
-                                                viewModel.selectSuggestionAsOrigin(suggestion.placeId)
-                                                origin = suggestion.mainText
-                                            } else {
-                                                viewModel.selectSuggestionAsDestination(suggestion.placeId)
-                                                destination = suggestion.mainText
+                        Spacer(Modifier.height(16.dp))
+
+                        InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
+
+                        // Search inputs
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                                SearchInput(origin, onValueChange = {
+                                    origin = it
+                                    selectingForOrigin = true
+                                    viewModel.onQueryChanged(it)
+                                }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
+
+                                SearchInput(destination, onValueChange = {
+                                    destination = it
+                                    selectingForOrigin = false
+                                    viewModel.onQueryChanged(it)
+                                }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                            }
+
+                            // Suggestions list
+                            if (state.suggestions.isNotEmpty()) {
+                                LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                                    items(state.suggestions) { suggestion ->
+                                        Card(modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .clickable {
+                                                if (selectingForOrigin) {
+                                                    viewModel.selectSuggestionAsOrigin(suggestion.placeId)
+                                                    origin = suggestion.mainText
+                                                } else {
+                                                    viewModel.selectSuggestionAsDestination(suggestion.placeId)
+                                                    destination = suggestion.mainText
+                                                }
+                                                viewModel.onQueryChanged("")
                                             }
-                                            viewModel.onQueryChanged("")
-                                        }
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
-                                            Spacer(Modifier.height(4.dp))
-                                            Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                        ) {
+                                            Column(modifier = Modifier.padding(12.dp)) {
+                                                Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
-                            Icon(Icons.Default.Search, null, Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Find Route", fontWeight = FontWeight.SemiBold)
-                        }
+                            Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+                                Icon(Icons.Default.Search, null, Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Find Route", fontWeight = FontWeight.SemiBold)
+                            }
 
-                        AnimatedVisibility(
-                            visible = showResult,
-                            enter = fadeIn(tween(300)) + slideInVertically(tween(300), initialOffsetY = { it / 2 }),
-                            exit = fadeOut()
-                        ) {
-                            val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
-                            RouteSummaryCard(route = selectedRoute, onConfirmRoute = { handleCloseSheet() }, onDrive = {
-                                // Start simulation and close sheet
-                                viewModel.startSimulation()
-                                handleCloseSheet()
-                            })
                         }
                     }
                 }
@@ -462,6 +491,7 @@ private fun InfoCardsRow(modifier: Modifier = Modifier) {
     }
 }
 
+
 @Composable
 private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint: Color, label: String, value: String, valueColor: Color = LocalContentColor.current, bgColor: Color) {
     Column(
@@ -497,7 +527,7 @@ private fun SearchInput(value: String, onValueChange: (String) -> Unit, placehol
 }
 
 @Composable
-private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onConfirmRoute: () -> Unit, onDrive: () -> Unit) {
+private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, originName: String, destinationName: String, onDrive: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -505,25 +535,34 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, onCon
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Route Summary", fontWeight = FontWeight.SemiBold)
+            // Show origin and destination
+            Column {
+                Text("From", fontSize = 12.sp, color = Grey)
+                Text(originName.ifBlank { "Unknown" }, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Text("To", fontSize = 12.sp, color = Grey)
+                Text(destinationName.ifBlank { "Unknown" }, fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(Modifier.height(8.dp))
+
             val eta = route?.duration ?: "--"
             val dist = route?.distance ?: "--"
             val summary = route?.summary ?: "--"
+
+            // Backend doesn't yet provide risk data; use a temporary hardcoded risk summary for now.
+            val riskText = "Low risk — clear weather, low traffic"
+
             RouteSummaryInfoRow(Icons.Default.Schedule, BlueishWhite, Blue, "Estimated Arrival", eta)
             RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", dist)
-            RouteSummaryInfoRow(Icons.Default.CheckCircle, GreenishGrey, DarkGreen, "Route Summary", summary)
+            RouteSummaryInfoRow(Icons.Default.Warning, GreenishGrey, DarkGreen, "Risk Summary", riskText)
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Drive button starts simulation
-                Button(onClick = { onDrive() }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                Button(onClick = { onDrive() }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
                     Icon(Icons.Default.Navigation, null, Modifier.size(18.dp), tint = Color.White)
                     Spacer(Modifier.width(8.dp))
                     Text("Drive", fontWeight = FontWeight.SemiBold, color = Color.White)
-                }
-
-                // Confirm Route kept for dismiss/confirm behavior
-                Button(onClick = onConfirmRoute, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-                    Text("Confirm Route", fontWeight = FontWeight.SemiBold, color = Color.White)
                 }
             }
         }
