@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -90,6 +91,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.IntrinsicSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,6 +162,8 @@ fun HomeScreen(
         val cameraPositionState = rememberCameraPositionState {
             position = CameraPosition.fromLatLngZoom(LatLng(40.7128, -74.0060), 12f)
         }
+
+        var showStepsSheet by remember { mutableStateOf(false) }
 
         // Always show the Map (so tiles load even if user hasn't granted location permission).
         MapScreenRoutes(
@@ -368,6 +372,56 @@ fun HomeScreen(
                 }
             }
         }
+
+        // Route options bar: always show alternatives if present; placed above bottom nav
+        if (state.routes.isNotEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                RouteOptionsBar(
+                    routes = state.routes,
+                    selectedIndex = state.selectedRouteIndex,
+                    onSelect = { idx -> viewModel.selectRoute(idx) },
+                    onShowSteps = { idx ->
+                        viewModel.selectRoute(idx)
+                        showStepsSheet = true
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 86.dp) // above bottom nav
+                )
+            }
+        }
+
+        // Steps bottom sheet (shows step-by-step instructions for currently selected route)
+        if (showStepsSheet) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { showStepsSheet = false },
+                sheetState = sheetState
+            ) {
+                val sel = state.routes.getOrNull(state.selectedRouteIndex)
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)) {
+                    Text("Route Steps", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                    Spacer(Modifier.height(8.dp))
+                    sel?.steps?.let { steps ->
+                        LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
+                            items(steps) { step ->
+                                Column(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)) {
+                                    Text(step.instruction ?: "", fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.height(4.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        Text(step.distance ?: "--", fontSize = 12.sp, color = Grey)
+                                        Text(step.duration ?: "--", fontSize = 12.sp, color = Grey)
+                                    }
+                                }
+                            }
+                        }
+                    } ?: Text("No steps available", color = Grey)
+                }
+            }
+        }
     }
 }
 
@@ -533,7 +587,13 @@ private fun MapScreenRoutes(
             val path = remember(enc) { PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) } }
             if (path.isNotEmpty()) {
                 val isSelected = idx == selectedIndex
-                val color = if (isSelected) Color(0xFF0D47A1) else Color.Gray.copy(alpha = 0.6f)
+                val hasAlternatives = routes.size > 1
+                val color = when {
+                    isSelected -> Color(0xFF0D47A1) // dark blue
+                    idx == 0 && hasAlternatives && selectedIndex != 0 -> Color(0xFF616161) // primary becomes gray when alt selected
+                    idx == 0 -> Color(0xFF90CAF9) // primary unselected (no alt selected)
+                    else -> Color(0xFFBDBDBD) // alternative unselected (lighter gray)
+                }
                 val width = if (isSelected) 12f else 6f
                 Polyline(points = path, color = color, width = width, clickable = true, onClick = { onSelect(idx) })
             }
@@ -541,6 +601,51 @@ private fun MapScreenRoutes(
     }
 }
 
+// Bottom bar displaying primary and alternative route summaries (duration + distance)
+@Composable
+private fun RouteOptionsBar(
+    routes: List<com.doublezero.data.network.RouteDto>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    onShowSteps: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (routes.isEmpty()) return
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    ) {
+        routes.forEachIndexed { idx, route ->
+            val selected = idx == selectedIndex
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onSelect(idx) },
+                shape = RoundedCornerShape(12.dp),
+                colors = if (selected) CardDefaults.cardColors(containerColor = Color(0xFF0D47A1)) else CardDefaults.cardColors(containerColor = BrightWhite)
+            ) {
+                Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (idx == 0) "Primary" else "Alternate", fontSize = 12.sp, color = if (selected) Color.White else Grey)
+                    Spacer(Modifier.height(4.dp))
+                    Text(route.duration ?: "--", fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Blue)
+                    Text(route.distance ?: "--", fontSize = 12.sp, color = if (selected) Color.White else Grey)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Details button opens steps sheet
+                        Button(onClick = { onShowSteps(idx) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEEEEE))) {
+                            Text("Details", fontSize = 12.sp)
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
