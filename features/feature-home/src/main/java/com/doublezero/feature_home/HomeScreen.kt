@@ -449,8 +449,8 @@ fun HomeScreen(
             }
         }
 
-        // Route options bar: always show alternatives if present; placed above bottom nav
-        if (state.routes.isNotEmpty()) {
+        // Route options bar: show only when NOT simulating
+        if (state.routes.isNotEmpty() && !isSimulating) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                 RouteOptionsBar(
                     routes = state.routes,
