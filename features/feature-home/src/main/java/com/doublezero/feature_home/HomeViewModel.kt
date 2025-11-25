@@ -172,8 +172,8 @@ class HomeViewModel @Inject constructor(
      * - updateIntervalMs: how often to update simPosition (in ms)
      */
     fun startSimulation(
-        speedMultiplier: Float = 5.5f,
-        maneuverPauseMs: Long = 1500L,
+        speedMultiplier: Float = 7.5f,
+        maneuverPauseMs: Long = 1000L,
         updateIntervalMs: Long = 50L
     ) {
         simulationJob?.cancel() // Cancel any previous simulation
