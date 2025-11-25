@@ -162,11 +162,14 @@ class HomeViewModel @Inject constructor(
             // The total duration is taken from the route data, with a fallback (minutes -> ms)
             val totalDurationMinutes = route.duration?.split(" ")?.firstOrNull()?.toLongOrNull() ?: 60L
             val totalDurationMs = totalDurationMinutes * 60 * 1000
+            // Make simulation faster: speed multiplier (adjustable)
+            val simulationSpeedMultiplier = 5.5f
+            val effectiveTotalDurationMs = (totalDurationMs / simulationSpeedMultiplier).toLong()
             val startTime = System.currentTimeMillis()
 
             while (_uiState.value.isSimulating) {
                 val elapsedTime = System.currentTimeMillis() - startTime
-                val fraction = (elapsedTime.toFloat() / totalDurationMs).coerceIn(0f, 1f)
+                val fraction = (elapsedTime.toFloat() / effectiveTotalDurationMs).coerceIn(0f, 1f)
 
                 if (fraction >= 1f) {
                     _uiState.update { it.copy(simPosition = pathPoints.last()) }
@@ -185,7 +188,7 @@ class HomeViewModel @Inject constructor(
                         simStepIndex = currentStepIndex
                     )
                 }
-                delay(100) // Update every 100ms for smooth animation
+                delay(50) // Update every 50ms for smoother & faster animation
             }
         }
     }

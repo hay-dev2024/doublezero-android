@@ -171,7 +171,8 @@ fun HomeScreen(
         LaunchedEffect(state.simPosition) {
             state.simPosition?.let { sp ->
                 try {
-                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(sp, 16f))
+                    // Use immediate move instead of animate to avoid slow camera animation when simulation starts
+                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(sp, 16f))
                 } catch (_: Exception) { }
             }
         }
@@ -608,7 +609,8 @@ fun MapScreen(
             val path = remember(enc) {
                 PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
             }
-            Polyline(points = path)
+            val darkGray = Color(0xFF616161)
+            Polyline(points = path, color = darkGray, width = 6f)
         }
     }
 }
@@ -644,12 +646,9 @@ private fun MapScreenRoutes(
             if (path.isNotEmpty()) {
                 val isSelected = idx == selectedIndex
                 val hasAlternatives = routes.size > 1
-                val color = when {
-                    isSelected -> Color(0xFF0D47A1) // dark blue
-                    idx == 0 && hasAlternatives && selectedIndex != 0 -> Color(0xFF616161) // primary becomes gray when alt selected
-                    idx == 0 -> Color(0xFF90CAF9) // primary unselected (no alt selected)
-                    else -> Color(0xFFBDBDBD) // alternative unselected (lighter gray)
-                }
+                // unify non-selected color to dark gray; keep selected route blue
+                val darkGray = Color(0xFF616161)
+                val color = if (isSelected) Color(0xFF0D47A1) else darkGray
                 val width = if (isSelected) 12f else 6f
                 Polyline(points = path, color = color, width = width, clickable = true, onClick = { onSelect(idx) })
             }
@@ -729,4 +728,3 @@ private fun HomeScreenSearchOpenPreview() {
         )
     }
 }
-
