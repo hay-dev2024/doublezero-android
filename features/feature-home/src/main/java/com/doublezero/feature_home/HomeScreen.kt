@@ -760,11 +760,7 @@ private fun RouteOptionsBar(
                     Text(route.distance ?: "--", fontSize = 12.sp, color = if (selected) Color.White else Grey)
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Details button opens steps sheet
-                        Button(onClick = { onShowSteps(idx) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEEEEE))) {
-                            Text("Details", fontSize = 12.sp)
-                        }
-                        Spacer(Modifier.width(6.dp))
+
                     }
                 }
             }
