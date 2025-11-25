@@ -321,6 +321,11 @@ fun HomeScreen(
                                 // start simulation with default tuned parameters
                                 viewModel.startSimulation()
                                 handleCloseSheet()
+                            },
+                            onReset = {
+                                // clear origin/destination and routes, allow new search
+                                viewModel.startNewSearch()
+                                handleCloseSheet()
                             }
                         )
                     }
@@ -528,7 +533,7 @@ private fun SearchInput(value: String, onValueChange: (String) -> Unit, placehol
 }
 
 @Composable
-private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, originName: String, destinationName: String, onDrive: () -> Unit) {
+private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, originName: String, destinationName: String, onDrive: () -> Unit, onReset: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -560,10 +565,17 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, origi
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Drive button starts simulation
-                Button(onClick = { onDrive() }, Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+                Button(onClick = { onDrive() }, Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = DarkGreen), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
                     Icon(Icons.Default.Navigation, null, Modifier.size(18.dp), tint = Color.White)
                     Spacer(Modifier.width(8.dp))
                     Text("Drive", fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+
+                // Secondary button to allow changing/resetting the route/search
+                androidx.compose.material3.OutlinedButton(onClick = { onReset() }, Modifier.align(Alignment.CenterVertically)) {
+                    Icon(Icons.Default.Close, null, Modifier.size(16.dp), tint = Grey)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Change Route", fontWeight = FontWeight.SemiBold, color = Grey)
                 }
             }
         }

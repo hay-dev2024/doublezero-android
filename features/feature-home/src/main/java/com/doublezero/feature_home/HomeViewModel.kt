@@ -143,6 +143,29 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
+     * Reset the search/route state so user can start a new origin/destination entry.
+     * UI label suggestion: "New Search"
+     */
+    fun startNewSearch() {
+        // cancel any running simulation
+        simulationJob?.cancel()
+
+        _uiState.update {
+            it.copy(
+                suggestions = emptyList(),
+                selectedOrigin = null,
+                selectedDestination = null,
+                routes = emptyList(),
+                selectedRouteIndex = -1,
+                error = null,
+                isSimulating = false,
+                simPosition = null,
+                simStepIndex = -1
+            )
+        }
+    }
+
+    /**
      * Start simulation using per-step durations when available.
      * - speedMultiplier: multiplies real-world speed (higher => faster simulation)
      * - maneuverPauseMs: pause duration at steps with maneuvers (in ms)
