@@ -619,7 +619,9 @@ fun MapScreen(
 ) {
 
     val properties = com.google.maps.android.compose.MapProperties(
-        isMyLocationEnabled = locationPermissionGranted
+        isMyLocationEnabled = locationPermissionGranted,
+        // Enable Google Traffic Layer by default
+        isTrafficEnabled = true
     )
     val uiSettings = com.google.maps.android.compose.MapUiSettings(
         myLocationButtonEnabled = locationPermissionGranted
@@ -657,7 +659,9 @@ private fun MapScreenRoutes(
     simulatedPosition: LatLng? = null
 ) {
     val properties = com.google.maps.android.compose.MapProperties(
-        isMyLocationEnabled = locationPermissionGranted
+        isMyLocationEnabled = locationPermissionGranted,
+        // Enable Google Traffic Layer by default
+        isTrafficEnabled = true
     )
     val uiSettings = com.google.maps.android.compose.MapUiSettings(
         myLocationButtonEnabled = locationPermissionGranted
