@@ -662,7 +662,6 @@ private fun MapScreenRoutes(
 ) {
     val properties = com.google.maps.android.compose.MapProperties(
         isMyLocationEnabled = locationPermissionGranted,
-        // Enable Google Traffic Layer by default
         isTrafficEnabled = true
     )
     val uiSettings = com.google.maps.android.compose.MapUiSettings(
@@ -675,7 +674,6 @@ private fun MapScreenRoutes(
         properties = properties,
         uiSettings = uiSettings
     ) {
-        // draw each route
         routes.forEachIndexed { idx, route ->
             val enc = route.polyline ?: return@forEachIndexed
             val path = remember(enc) { PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) } }
@@ -683,35 +681,33 @@ private fun MapScreenRoutes(
             if (path.isNotEmpty()) {
                 val isSelected = idx == selectedIndex
 
-                // 1. 파란색 경로 선 (히트맵 아래에 깔아줌)
-                val baseColor = if (isSelected) Color(0xFF0D47A1) else Color(0xFF616161)
+                val color = if (isSelected) Color(0xFF0D47A1) else Color(0xFF616161)
+                val width = if (isSelected) 12f else 8f
+                val zIndex = if (isSelected) 2f else 1f
+
                 Polyline(
                     points = path,
-                    color = baseColor,
-                    width = if (isSelected) 12f else 6f,
-                    zIndex = 1f
+                    color = color,
+                    width = width,
+                    zIndex = zIndex,
+                    clickable = true,
+                    onClick = { onSelect(idx) }
                 )
 
-                // 2. [수정됨] 선택된 경로에 대해 '구간별' 히트맵 적용
                 if (isSelected) {
-                    // 구간별 프로바이더 리스트 생성 (List<Pair<Provider, RiskLevel>>)
                     val segmentedProviders = remember(path) {
                         RiskHeatmapUtils.createSegmentedHeatmapProviders(path)
                     }
-
-                    // 각 구간을 별도의 TileOverlay로 그리기
-                    segmentedProviders.forEach { (provider, riskLevel) ->
+                    segmentedProviders.forEach { (provider, _) ->
                         TileOverlay(
                             tileProvider = provider,
                             transparency = 0.0f,
-                            zIndex = 2f // 경로 선보다 위에 그림
+                            zIndex = 3f
                         )
                     }
                 }
             }
         }
-
-        // draw simulated position marker if present
         simulatedPosition?.let { sp ->
             Marker(state = rememberUpdatedMarkerState(position = sp), title = "You (sim)")
         }
