@@ -231,7 +231,8 @@ fun HomeScreen(
                         cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
                     }
                 }
-            } else {
+            }
+            else {
                 // no routes: if origin exists, center to origin
                 (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
                     cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
@@ -288,127 +289,133 @@ fun HomeScreen(
                 dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
             ) {
                 // Branch: if we have results (showResult), show only the summary+Drive button.
-                if (showResult) {
+                when (showResult) {
                     // Minimal summary view so map remains visible
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 12.dp, bottom = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    true -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 12.dp, bottom = 24.dp)
                         ) {
-                            Text(
-                                "Route Summary",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Route Summary",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                IconButton(onClick = { handleCloseSheet() }) {
+                                    Icon(Icons.Default.Close, "Close", tint = Grey)
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
+                            RouteSummaryCard(
+                                route = selectedRoute,
+                                originName = (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.name ?: origin,
+                                destinationName = (state.selectedDestination as? com.doublezero.data.network.PlaceDto)?.name ?: destination,
+                                onDrive = {
+                                    viewModel.startSimulation()
+                                    handleCloseSheet()
+                                },
+                                onReset = {
+                                    viewModel.startNewSearch()
+                                    handleCloseSheet()
+                                }
                             )
-                            IconButton(onClick = { handleCloseSheet() }) {
-                                Icon(Icons.Default.Close, "Close", tint = Grey)
-                            }
                         }
-
-                        Spacer(Modifier.height(12.dp))
-
-                        val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
-                        RouteSummaryCard(
-                            route = selectedRoute,
-                            originName = (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.name ?: origin,
-                            destinationName = (state.selectedDestination as? com.doublezero.data.network.PlaceDto)?.name ?: destination,
-                            onDrive = {
-                                // start simulation with default tuned parameters
-                                viewModel.startSimulation()
-                                handleCloseSheet()
-                            },
-                            onReset = {
-                                // clear origin/destination and routes, allow new search
-                                viewModel.startNewSearch()
-                                handleCloseSheet()
-                            }
-                        )
                     }
-                } else {
                     // Original search UI (keeps suggestions/inputs)
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    false -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 24.dp)
                         ) {
-                            Text(
-                                "Search Route",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            IconButton(onClick = { handleCloseSheet() }) {
-                                Icon(Icons.Default.Close, "Close", tint = Grey)
-                            }
-                        }
-
-                        Spacer(Modifier.height(16.dp))
-
-                        InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
-
-                        // Search inputs
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                                SearchInput(origin, onValueChange = {
-                                    origin = it
-                                    selectingForOrigin = true
-                                    viewModel.onQueryChanged(it)
-                                }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
-
-                                SearchInput(destination, onValueChange = {
-                                    destination = it
-                                    selectingForOrigin = false
-                                    viewModel.onQueryChanged(it)
-                                }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Search Route",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                IconButton(onClick = { handleCloseSheet() }) {
+                                    Icon(Icons.Default.Close, "Close", tint = Grey)
+                                }
                             }
 
-                            // Suggestions list
-                            if (state.suggestions.isNotEmpty()) {
-                                LazyColumn(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                                    items(state.suggestions) { suggestion: com.doublezero.data.network.PlaceSuggestionDto ->
-                                        Card(modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                            .clickable {
-                                                if (selectingForOrigin) {
-                                                    viewModel.selectSuggestionAsOrigin(suggestion.placeId)
-                                                    origin = suggestion.mainText
-                                                } else {
-                                                    viewModel.selectSuggestionAsDestination(suggestion.placeId)
-                                                    destination = suggestion.mainText
+                            Spacer(Modifier.height(16.dp))
+
+                            InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
+
+                            // Search inputs
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                                    SearchInput(origin, onValueChange = {
+                                        origin = it
+                                        selectingForOrigin = true
+                                        viewModel.onQueryChanged(it)
+                                    }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
+
+                                    SearchInput(destination, onValueChange = {
+                                        destination = it
+                                        selectingForOrigin = false
+                                        viewModel.onQueryChanged(it)
+                                    }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                                }
+
+                                // Suggestions list
+                                if (state.suggestions.isNotEmpty()) {
+                                    LazyColumn(modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp)) {
+                                        items(state.suggestions) { suggestion: com.doublezero.data.network.PlaceSuggestionDto ->
+                                            Card(modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                                .clickable {
+                                                    when (selectingForOrigin) {
+                                                        true -> {
+                                                            viewModel.selectSuggestionAsOrigin(suggestion.placeId)
+                                                            origin = suggestion.mainText
+                                                        }
+                                                        false -> {
+                                                            viewModel.selectSuggestionAsDestination(suggestion.placeId)
+                                                            destination = suggestion.mainText
+                                                        }
+                                                    }
+                                                    viewModel.onQueryChanged("")
                                                 }
-                                                viewModel.onQueryChanged("")
-                                            }
-                                        ) {
-                                            Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
-                                                Spacer(Modifier.height(4.dp))
-                                                Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                            ) {
+                                                Column(modifier = Modifier.padding(12.dp)) {
+                                                    Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
+                                                    Spacer(Modifier.height(4.dp))
+                                                    Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
 
-                            Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
-                                Icon(Icons.Default.Search, null, Modifier.size(20.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Find Route", fontWeight = FontWeight.SemiBold)
-                            }
+                                Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+                                    Icon(Icons.Default.Search, null, Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Find Route", fontWeight = FontWeight.SemiBold)
+                                }
 
+                            }
                         }
                     }
                 }
