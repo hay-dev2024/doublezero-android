@@ -44,6 +44,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
@@ -125,6 +127,19 @@ fun HomeScreen(
     ) { granted ->
         locationPermissionGranted = granted
         permissionStatusMessage.value = if (granted) "Permission: GRANTED" else "Permission: DENIED"
+    }
+
+    // Snackbar state to show arrival notification
+    val snackbarHostState = remember { SnackbarHostState() }
+    var wasSimulating by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.isSimulating) {
+        // detect transition from simulating -> not simulating and show arrival snackbar once
+        if (wasSimulating && !state.isSimulating) {
+            // simple English message for US audience
+            snackbarHostState.showSnackbar("Arrived at destination")
+        }
+        wasSimulating = state.isSimulating
     }
 
     LaunchedEffect(Unit) {
@@ -282,6 +297,14 @@ fun HomeScreen(
             }
         }
 
+        // Snackbar host to show arrival notification when simulation ends
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 86.dp)
+        )
+
         if (showSheet) {
             androidx.compose.material3.ModalBottomSheet(
                 onDismissRequest = { handleCloseSheet() },
@@ -358,7 +381,7 @@ fun HomeScreen(
 
                             Spacer(Modifier.height(16.dp))
 
-                            InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
+//                            InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
 
                             // Search inputs
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -494,35 +517,35 @@ fun HomeScreen(
 }
 
 
-@Composable
-private fun InfoCardsRow(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        InfoCard(Modifier.weight(1f), Icons.Default.Speed, Blue, "Speed", "0 km/h", bgColor = BrightWhite)
-        InfoCard(Modifier.weight(1f), Icons.Default.Cloud, Blue, "Weather", "Clear", bgColor = BrightWhite)
-        InfoCard(Modifier.weight(1f), Icons.Default.Warning, DarkGreen, "Risk", "Safe", DarkGreen, GreenishGrey)
-    }
-}
+//@Composable
+//private fun InfoCardsRow(modifier: Modifier = Modifier) {
+//    Row(
+//        modifier = modifier.fillMaxWidth(),
+//        horizontalArrangement = Arrangement.spacedBy(12.dp)
+//    ) {
+//        InfoCard(Modifier.weight(1f), Icons.Default.Speed, Blue, "Speed", "0 km/h", bgColor = BrightWhite)
+//        InfoCard(Modifier.weight(1f), Icons.Default.Cloud, Blue, "Weather", "Clear", bgColor = BrightWhite)
+//        InfoCard(Modifier.weight(1f), Icons.Default.Warning, DarkGreen, "Risk", "Safe", DarkGreen, GreenishGrey)
+//    }
+//}
 
 
-@Composable
-private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint: Color, label: String, value: String, valueColor: Color = LocalContentColor.current, bgColor: Color) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, label, tint = iconTint, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.height(4.dp))
-        Text(label, fontSize = 11.sp, color = Grey)
-        Spacer(Modifier.height(2.dp))
-        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
-    }
-}
+//@Composable
+//private fun InfoCard(modifier: Modifier = Modifier, icon: ImageVector, iconTint: Color, label: String, value: String, valueColor: Color = LocalContentColor.current, bgColor: Color) {
+//    Column(
+//        modifier = modifier
+//            .clip(RoundedCornerShape(12.dp))
+//            .background(bgColor)
+//            .padding(12.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally
+//    ) {
+//        Icon(icon, label, tint = iconTint, modifier = Modifier.size(20.dp))
+//        Spacer(Modifier.height(4.dp))
+//        Text(label, fontSize = 11.sp, color = Grey)
+//        Spacer(Modifier.height(2.dp))
+//        Text(value, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valueColor)
+//    }
+//}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
