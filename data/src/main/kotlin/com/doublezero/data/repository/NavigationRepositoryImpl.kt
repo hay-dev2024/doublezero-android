@@ -1,7 +1,7 @@
 package com.doublezero.data.repository
 
 import android.util.Log
-import com.doublezero.data.network.LatLonDto
+import com.doublezero.data.network.PlaceInputDto
 import com.doublezero.data.network.NavigationApi
 import com.doublezero.data.network.RouteRequestDto
 import com.doublezero.data.network.RouteDto
@@ -18,7 +18,12 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
     // Create a Retrofit instance for local backend (matching AuthRepositoryImpl pattern)
     private val retrofit by lazy {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-        val client = OkHttpClient.Builder().addInterceptor(logging).build()
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
 
         Retrofit.Builder()
             .baseUrl("http://10.0.2.2:3000")
@@ -34,13 +39,21 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
         originLng: Double,
         destLat: Double,
         destLng: Double,
+        sampleCount: Int,
+        includeRisk: Boolean,
         token: String?
     ): List<RouteDto> {
+        // enforce client-side cap on sampleCount to avoid excessive payload
+        val cappedSamples = sampleCount.coerceAtMost(5).coerceAtLeast(1)
+
         val req = RouteRequestDto(
-            origin = LatLonDto(originLat, originLng),
-            destination = LatLonDto(destLat, destLng),
+            origin = PlaceInputDto(lat = originLat, lon = originLng),
+            destination = PlaceInputDto(lat = destLat, lon = destLng),
             // ask server to compute one alternative route if available
             alternatives = true,
+
+            sampleCount = cappedSamples,
+            includeRisk = includeRisk
         )
 
         return try {
@@ -62,6 +75,7 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
             }
         } catch (e: Exception) {
             // network error or parsing error -> return empty list so caller can handle fallback
+            Log.w("NavRepo", "computeRoute failed", e)
             emptyList()
         }
     }

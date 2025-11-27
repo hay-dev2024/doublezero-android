@@ -8,6 +8,8 @@ interface NavigationRepository {
         originLng: Double,
         destLat: Double,
         destLng: Double,
+        sampleCount: Int = 3,
+        includeRisk: Boolean = false,
         token: String? = null
     ): List<RouteDto>
 }

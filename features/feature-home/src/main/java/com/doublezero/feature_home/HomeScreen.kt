@@ -586,10 +586,9 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, origi
 
             val eta = route?.duration ?: "--"
             val dist = route?.distance ?: "--"
-            val summary = route?.summary ?: "--"
 
-            // Backend doesn't yet provide risk data; use a temporary hardcoded risk summary for now.
-            val riskText = "Low risk — clear weather, low traffic"
+            // Compute risk summary from route.riskPoints (fallback when backend doesn't provide a precomputed summary)
+            val riskText = computeRiskSummary(route)
 
             RouteSummaryInfoRow(Icons.Default.Schedule, BlueishWhite, Blue, "Estimated Arrival", eta)
             RouteSummaryInfoRow(Icons.Default.Map, BlueishWhite, Blue, "Total Distance", dist)
@@ -612,6 +611,27 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, origi
             }
         }
     }
+}
+
+// Helper to compute a short risk summary string from riskPoints
+private fun computeRiskSummary(route: com.doublezero.data.network.RouteDto?): String {
+    val rps = route?.riskPoints
+    if (rps.isNullOrEmpty()) return "Risk data not available"
+
+    val weights = rps.map { it.weight.coerceIn(0.0, 1.0) }
+    val avg = weights.average()
+    val max = weights.maxOrNull() ?: 0.0
+    val highCount = weights.count { it > 0.66 }
+    // total not used currently
+
+    val level = when {
+        avg <= 0.33 -> "Low"
+        avg <= 0.66 -> "Medium"
+        else -> "High"
+    }
+
+    val hotspotsText = if (highCount > 0) "$highCount hotspot(s)" else "No major hotspots"
+    return "$level risk — $hotspotsText (max ${"%.2f".format(max)})"
 }
 
 @Composable
@@ -670,11 +690,12 @@ fun MapScreen(
         }
 
         encodedPolyline?.takeIf { it.isNotBlank() }?.let { enc ->
-            val path = remember(enc) {
+             val path = remember(enc) {
                 PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
             }
-            val darkGray = Color(0xFF616161)
-            Polyline(points = path, color = darkGray, width = 6f)
+            // use same lighter gray for single encoded polyline when shown
+            val darkGray = Color(0xFF9E9E9E)
+             Polyline(points = path, color = darkGray, width = 6f)
         }
     }
 }
@@ -711,40 +732,172 @@ private fun MapScreenRoutes(
             if (path.isNotEmpty()) {
                 val isSelected = idx == selectedIndex
 
-                val color = if (isSelected) Color(0xFF0D47A1) else Color(0xFF616161)
-                val width = if (isSelected) 12f else 8f
-                val zIndex = if (isSelected) 2f else 1f
+                // Restore original color behavior: only the selected route is navy; others are gray
+                val navy = Color(0xFF0D47A1)
+                // lighter gray for alternate/unselected routes (requested)
+                val gray = Color(0xFF9E9E9E)
+                val defaultColor = if (isSelected) navy else gray
+                val defaultWidth = if (isSelected) 12f else 8f
+                val defaultZ = if (isSelected) 2f else 1f
 
-                Polyline(
-                    points = path,
-                    color = color,
-                    width = width,
-                    zIndex = zIndex,
-                    clickable = true,
-                    onClick = { onSelect(idx) }
-                )
+                // If this route is selected and has riskPoints, render colored segments using risk weights
+                val hasRisk = isSelected && (route.riskPoints?.isNotEmpty() == true)
+
+                if (hasRisk) {
+                    // draw base polyline in the default route color (navy for selected, gray otherwise)
+                    Polyline(points = path, color = defaultColor, width = defaultWidth, zIndex = 1f)
+
+                    // Prepare interpolated weights per path index
+                    val rpList = route.riskPoints!!.sortedBy { it.pointIndex ?: Int.MAX_VALUE }
+                    val n = path.size
+                    val weights = DoubleArray(n) { 0.0 }
+
+                    if (rpList.isNotEmpty()) {
+                        // Map risk points to indices (use provided pointIndex when available)
+                        val known = rpList.map { rp ->
+                            val idx = rp.pointIndex?.coerceIn(0, n - 1) ?: findNearestIndex(path, rp.lat, rp.lon)
+                            idx to rp.weight.coerceIn(0.0, 1.0)
+                        }.sortedBy { it.first }
+
+                        // Fill before first known with first weight
+                        val firstIdx = known.first().first
+                        val firstW = known.first().second
+                        for (i in 0..firstIdx) weights[i] = firstW
+
+                        // Interpolate between known points
+                        for (k in 0 until known.size - 1) {
+                            val (i1, w1) = known[k]
+                            val (i2, w2) = known[k + 1]
+                            if (i2 == i1) {
+                                weights[i1] = (w1 + w2) / 2.0
+                                continue
+                            }
+                            for (j in i1..i2) {
+                                val t = (j - i1).toDouble() / (i2 - i1)
+                                weights[j] = w1 * (1.0 - t) + w2 * t
+                            }
+                        }
+
+                        // Fill after last known with last weight
+                        val lastIdx = known.last().first
+                        val lastW = known.last().second
+                        for (i in lastIdx until n) weights[i] = lastW
+                    }
+
+                    // Now build contiguous polylines per color bucket for visual smoothness
+                    if (n >= 2) {
+                        var segStart = 0
+                        var currentColor = mapWeightToColor((weights[0] + weights[1]) / 2.0)
+                        val segWidth = (defaultWidth + 1f)
+
+                        for (iSeg in 0 until n - 1) {
+                            val segWeight = (weights[iSeg] + weights[iSeg + 1]) / 2.0
+                            // Only show colored overlay for medium+ risk (weight > 0.33)
+                            val segColor = mapWeightToColor(segWeight)
+                            // Show overlay only for HIGH risk now to keep base route color dominant
+                            val showOverlay = segWeight > 0.66
+                            if (showOverlay && segColor != currentColor) {
+                                // draw current segment batch
+                                val seg = path.subList(segStart, iSeg + 1 + 1) // inclusive end
+                                if (seg.size >= 2) {
+                                    // Use a thin, semi-transparent HIGH-risk overlay so base route color remains dominant
+                                    Polyline(points = seg, color = currentColor.copy(alpha = 0.25f), width = segWidth, zIndex = 3f, clickable = true, onClick = { onSelect(idx) })
+                                }
+                                segStart = iSeg + 1
+                                currentColor = segColor
+                            } else if (!showOverlay) {
+                                // advance segStart when overlay isn't shown to avoid repeating old color batches
+                                segStart = iSeg + 1
+                                currentColor = mapWeightToColor((weights[segStart.coerceAtMost(n-1)] + weights[segStart.coerceAtMost(n-1)]) / 2.0)
+                            }
+                        }
+
+                        // draw remaining
+                        if (segStart < n - 1) {
+                            val seg = path.subList(segStart, n)
+                            if (seg.size >= 2) {
+                                // Only draw final overlay if it's medium+ risk
+                                val next = weights.getOrNull(segStart + 1) ?: weights[segStart]
+                                val finalWeight = (weights[segStart] + next) / 2.0
+                                if (finalWeight > 0.66) {
+                                    Polyline(points = seg, color = currentColor.copy(alpha = 0.25f), width = segWidth, zIndex = 3f, clickable = true, onClick = { onSelect(idx) })
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Polyline(
+                        points = path,
+                        color = defaultColor,
+                        width = defaultWidth,
+                        zIndex = defaultZ,
+                        clickable = true,
+                        onClick = { onSelect(idx) }
+                    )
+                }
 
                 if (isSelected) {
+                    // keep existing tile overlay behavior as fallback or additional layer
                     val segmentedProviders = remember(path) {
                         RiskHeatmapUtils.createSegmentedHeatmapProviders(path)
                     }
                     segmentedProviders.forEach { (provider, _) ->
                         TileOverlay(
                             tileProvider = provider,
-                            transparency = 0.0f,
+                            transparency = 0.6f,
                             zIndex = 3f
                         )
                     }
                 }
             }
         }
+
         simulatedPosition?.let { sp ->
             Marker(state = rememberUpdatedMarkerState(position = sp), title = "You (sim)")
         }
     }
 }
 
-// Bottom bar displaying primary and alternative route summaries (duration + distance)
+// Helper: map normalized weight (0..1) to heatmap color
+private fun mapWeightToColor(weight: Double): Color {
+    val w = weight.coerceIn(0.0, 1.0)
+    return when {
+        w <= 0.33 -> Color(0xFF00C853) // Green
+        w <= 0.66 -> Color(0xFFFFEB3B) // Yellow
+        else -> Color(0xFFFF5252) // Red
+    }
+}
+
+// Helper: find nearest path index for a given lat/lon
+private fun findNearestIndex(path: List<LatLng>, lat: Double, lon: Double): Int {
+    if (path.isEmpty()) return 0
+    var bestIdx = 0
+    var bestDist = Double.MAX_VALUE
+    for (i in path.indices) {
+        val p = path[i]
+        val dLat = p.latitude - lat
+        val dLon = p.longitude - lon
+        val distSq = dLat * dLat + dLon * dLon
+        if (distSq < bestDist) {
+            bestDist = distSq
+            bestIdx = i
+        }
+    }
+    return bestIdx
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun HomeScreenPreview() {
+    MaterialTheme {
+        HomeScreen(
+            onNavigateToMyPage = {},
+            onNavigateToHistory = {},
+            onNavigateToSettings = {}
+        )
+    }
+}
+
 @Composable
 private fun RouteOptionsBar(
     routes: List<com.doublezero.data.network.RouteDto>,
@@ -784,30 +937,5 @@ private fun RouteOptionsBar(
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
-@Composable
-private fun HomeScreenPreview() {
-    MaterialTheme {
-        HomeScreen(
-            onNavigateToMyPage = {},
-            onNavigateToHistory = {},
-            onNavigateToSettings = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
-@Composable
-private fun HomeScreenSearchOpenPreview() {
-    MaterialTheme {
-        HomeScreen(
-            openSearch = true,
-            onNavigateToMyPage = {},
-            onNavigateToHistory = {},
-            onNavigateToSettings = {}
-        )
     }
 }

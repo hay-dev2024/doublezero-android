@@ -123,6 +123,8 @@ class HomeViewModel @Inject constructor(
                     originLng = origin.lon,
                     destLat = destination.lat,
                     destLng = destination.lon,
+                    sampleCount = 3, // client default
+                    includeRisk = true, // ask server for risk data
                     token = null
                 )
 
