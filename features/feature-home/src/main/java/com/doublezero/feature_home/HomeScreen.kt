@@ -613,16 +613,30 @@ private fun RouteSummaryCard(route: com.doublezero.data.network.RouteDto?, origi
     }
 }
 
-// Helper to compute a short risk summary string from riskPoints
+// Helper to compute a short risk summary string from riskPoints or server-provided summary
 private fun computeRiskSummary(route: com.doublezero.data.network.RouteDto?): String {
-    val rps = route?.riskPoints
+    if (route == null) return "Risk data not available"
+
+    // 1) Prefer structured server-provided summary if present
+    route.riskSummary?.let { rs ->
+        val level = rs.level ?: "Unknown"
+        val maxW = rs.maxWeight ?: rs.avgWeight ?: 0.0
+        val hotspots = rs.hotspotCount ?: 0
+        val msg = rs.message?.takeIf { it.isNotBlank() }
+        return msg ?: "$level risk — $hotspots hotspot(s) (max ${"%.2f".format(maxW)})"
+    }
+
+    // 2) Prefer server-provided text summary if available
+    route.riskSummaryText?.takeIf { it.isNotBlank() }?.let { return it }
+
+    // 3) Fallback: compute from riskPoints array (client-side)
+    val rps = route.riskPoints
     if (rps.isNullOrEmpty()) return "Risk data not available"
 
     val weights = rps.map { it.weight.coerceIn(0.0, 1.0) }
     val avg = weights.average()
     val max = weights.maxOrNull() ?: 0.0
     val highCount = weights.count { it > 0.66 }
-    // total not used currently
 
     val level = when {
         avg <= 0.33 -> "Low"

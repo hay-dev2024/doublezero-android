@@ -59,6 +59,16 @@ data class RiskPointDto(
     val source: String? = null
 )
 
+// Structured risk summary returned by backend
+data class RiskSummaryDto(
+    val level: String?,
+    val avgWeight: Double?,
+    val maxWeight: Double?,
+    val hotspotCount: Int?,
+    val hotspotThreshold: Double?,
+    val message: String?
+)
+
 data class RouteDto(
     val routeId: String? = null,
     val distance: String? = null,
@@ -71,7 +81,10 @@ data class RouteDto(
     val trafficInfo: Map<String, Any>? = null,
 
     // riskPoints will be present when includeRisk=true; may be empty if prediction unavailable
-    val riskPoints: List<RiskPointDto>? = null
+    val riskPoints: List<RiskPointDto>? = null,
+    // server-provided structured summary and a human-readable text fallback
+    val riskSummary: RiskSummaryDto? = null,
+    val riskSummaryText: String? = null
 )
 
 data class RoutesResponseDto(
