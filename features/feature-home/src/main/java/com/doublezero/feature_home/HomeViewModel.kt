@@ -172,7 +172,7 @@ class HomeViewModel @Inject constructor(
      * - updateIntervalMs: how often to update simPosition (in ms)
      */
     fun startSimulation(
-        speedMultiplier: Float = 7.5f,
+        speedMultiplier: Float = 15.5f,
         maneuverPauseMs: Long = 1000L,
         updateIntervalMs: Long = 50L
     ) {
