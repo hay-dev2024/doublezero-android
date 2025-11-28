@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "8.12.0"
 kotlin = "2.2.21"
 composeCompiler = "1.5.14"
 coreKtx = "1.17.0"
@@ -17,6 +17,7 @@ jetbrainsKotlinJvm = "2.2.21"
 hilt = "2.57.2"
 compileSdk = "36"
 playServicesAuth = "21.4.0"
+playServicesLocation = "21.3.0"
 targetSdk = "36"
 androidxNavigation = "2.9.5"
 kotlinxSerialization = "1.9.0"
@@ -67,6 +68,7 @@ androidx-compose-animation = { group = "androidx.compose.animation", name = "ani
 
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle-runtime-compose" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

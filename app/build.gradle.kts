@@ -1,3 +1,6 @@
+
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,7 +11,7 @@ plugins {
     alias(libs.plugins.google.ksp)
 }
 
-import java.util.Properties
+
 
 // load local.properties for MAPS_API_KEY
 val localProps = Properties().apply {

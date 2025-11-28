@@ -1,9 +1,11 @@
 package com.doublezero.feature_home
 
+import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
+import com.doublezero.data.repository.LocationRepository
 import com.doublezero.data.repository.NavigationRepository
 import com.doublezero.data.repository.PlacesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,7 +31,8 @@ import kotlin.math.sqrt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val placesRepository: PlacesRepository,
-    private val navigationRepository: NavigationRepository
+    private val navigationRepository: NavigationRepository,
+    /* ysh */ private val locationRepository: LocationRepository /* ysh */
 ) : ViewModel() {
 
     data class HomeUiState(
@@ -43,7 +46,8 @@ class HomeViewModel @Inject constructor(
         // Simulation State
         val isSimulating: Boolean = false,
         val simPosition: LatLng? = null,
-        val simStepIndex: Int = -1
+        val simStepIndex: Int = -1,
+        /* ysh */ val userLocation: LatLng? = null /* ysh */
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -67,7 +71,27 @@ class HomeViewModel @Inject constructor(
                     }
                 }
         }
+        /* ysh */
+        fetchUserLocation()
+        /* ysh */
     }
+
+    /* ysh */
+    private fun fetchUserLocation() {
+        viewModelScope.launch {
+            try {
+                val location: Location? = locationRepository.getLastLocation()
+                location?.let {
+                    _uiState.update { state ->
+                        state.copy(userLocation = LatLng(it.latitude, it.longitude))
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to get user location.") }
+            }
+        }
+    }
+    /* ysh */
 
     fun onQueryChanged(query: String) {
         queryFlow.value = query

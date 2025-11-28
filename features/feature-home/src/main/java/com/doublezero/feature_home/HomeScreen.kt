@@ -38,6 +38,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -179,337 +180,343 @@ fun HomeScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // create shared camera state here so HomeScreen can control camera movements
-        val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(LatLng(40.7128, -74.0060), 12f)
-        }
-
-        // keep camera follow effect for simPosition from ViewModel
-        LaunchedEffect(state.simPosition) {
-            state.simPosition?.let { sp ->
-                try {
-                    // Use immediate move instead of animate to avoid slow camera animation when simulation starts
-                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(sp, 16f))
-                } catch (_: Exception) { }
+        if (state.userLocation == null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-        }
+        } else {
+            // create shared camera state here so HomeScreen can control camera movements
+            val cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(state.userLocation!!, 15f)
+            }
 
-        var showStepsSheet by remember { mutableStateOf(false) }
-
-        // Always show the Map (so tiles load even if user hasn't granted location permission).
-        MapScreenRoutes(
-            routes = state.routes,
-            selectedIndex = state.selectedRouteIndex,
-            onSelect = { idx -> viewModel.selectRoute(idx) },
-            locationPermissionGranted = locationPermissionGranted,
-            cameraPositionState = cameraPositionState,
-            modifier = Modifier.fillMaxSize(),
-            simulatedPosition = state.simPosition
-        )
-
-        // When routes change, animate camera to fit the selected route (if possible)
-        LaunchedEffect(state.routes, state.selectedRouteIndex) {
-            if (state.routes.isNotEmpty()) {
-                val idx = state.selectedRouteIndex.takeIf { it >= 0 } ?: 0
-                val selected = state.routes.getOrNull(idx)
-                selected?.polyline?.takeIf { it.isNotBlank() }?.let { enc ->
+            // keep camera follow effect for simPosition from ViewModel
+            LaunchedEffect(state.simPosition) {
+                state.simPosition?.let { sp ->
                     try {
-                        val points = PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
-                        if (points.isNotEmpty()) {
-                            val lats = points.map { it.latitude }
-                            val lons = points.map { it.longitude }
-                            val north = lats.maxOrNull() ?: 0.0
-                            val south = lats.minOrNull() ?: 0.0
-                            val east = lons.maxOrNull() ?: 0.0
-                            val west = lons.minOrNull() ?: 0.0
-                            val centerLat = (north + south) / 2.0
-                            val centerLon = (east + west) / 2.0
-                            val latSpan = north - south
-                            val lonSpan = east - west
-                            val span = maxOf(latSpan, lonSpan)
-                            // simple heuristic for zoom based on span
-                            val zoom = when {
-                                span < 0.01 -> 15f
-                                span < 0.05 -> 14f
-                                span < 0.25 -> 12f
-                                span < 1.0 -> 10f
-                                else -> 8f
+                        // Use immediate move instead of animate to avoid slow camera animation when simulation starts
+                        cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(sp, 16f))
+                    } catch (_: Exception) { }
+                }
+            }
+
+            var showStepsSheet by remember { mutableStateOf(false) }
+
+            // Always show the Map (so tiles load even if user hasn't granted location permission).
+            MapScreenRoutes(
+                routes = state.routes,
+                selectedIndex = state.selectedRouteIndex,
+                onSelect = { idx -> viewModel.selectRoute(idx) },
+                locationPermissionGranted = locationPermissionGranted,
+                cameraPositionState = cameraPositionState,
+                modifier = Modifier.fillMaxSize(),
+                simulatedPosition = state.simPosition
+            )
+
+            // When routes change, animate camera to fit the selected route (if possible)
+            LaunchedEffect(state.routes, state.selectedRouteIndex) {
+                if (state.routes.isNotEmpty()) {
+                    val idx = state.selectedRouteIndex.takeIf { it >= 0 } ?: 0
+                    val selected = state.routes.getOrNull(idx)
+                    selected?.polyline?.takeIf { it.isNotBlank() }?.let { enc ->
+                        try {
+                            val points = PolyUtil.decode(enc).map { LatLng(it.latitude, it.longitude) }
+                            if (points.isNotEmpty()) {
+                                val lats = points.map { it.latitude }
+                                val lons = points.map { it.longitude }
+                                val north = lats.maxOrNull() ?: 0.0
+                                val south = lats.minOrNull() ?: 0.0
+                                val east = lons.maxOrNull() ?: 0.0
+                                val west = lons.minOrNull() ?: 0.0
+                                val centerLat = (north + south) / 2.0
+                                val centerLon = (east + west) / 2.0
+                                val latSpan = north - south
+                                val lonSpan = east - west
+                                val span = maxOf(latSpan, lonSpan)
+                                // simple heuristic for zoom based on span
+                                val zoom = when {
+                                    span < 0.01 -> 15f
+                                    span < 0.05 -> 14f
+                                    span < 0.25 -> 12f
+                                    span < 1.0 -> 10f
+                                    else -> 8f
+                                }
+                                cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLon), zoom)))
                             }
-                            cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(centerLat, centerLon), zoom)))
+                        } catch (_: Exception) {
+                            // ignore camera centering errors
                         }
-                    } catch (_: Exception) {
-                        // ignore camera centering errors
+                    } ?: run {
+                        // no polyline -> if origin selected, center to origin
+                        (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
+                            cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
+                        }
                     }
-                } ?: run {
-                    // no polyline -> if origin selected, center to origin
+                }
+                else {
+                    // no routes: if origin exists, center to origin
                     (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
                         cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
                     }
                 }
             }
-            else {
-                // no routes: if origin exists, center to origin
-                (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.let {
-                    cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(CameraPosition.fromLatLngZoom(LatLng(it.lat, it.lon), 14f)))
-                }
-            }
-        }
 
-        // If permission is not granted, show a small overlay with a button to request it.
-        if (!locationPermissionGranted) {
-            Card(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .width(320.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = BrightWhite)
-            ) {
-                Row(
+            // If permission is not granted, show a small overlay with a button to request it.
+            if (!locationPermissionGranted) {
+                Card(
                     modifier = Modifier
-                        .padding(12.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .width(320.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = BrightWhite)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Location access needed", fontWeight = FontWeight.SemiBold)
-                        Text("Allow location to enable better routing and centering.", fontSize = 12.sp, color = SomewhatGrey)
-                        Spacer(Modifier.height(6.dp))
-                        Text(permissionStatusMessage.value, fontSize = 12.sp, color = SomewhatGrey)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Button(onClick = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) {
-                            Text("Allow")
+                    Row(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Location access needed", fontWeight = FontWeight.SemiBold)
+                            Text("Allow location to enable better routing and centering.", fontSize = 12.sp, color = SomewhatGrey)
+                            Spacer(Modifier.height(6.dp))
+                            Text(permissionStatusMessage.value, fontSize = 12.sp, color = SomewhatGrey)
                         }
-                        Spacer(Modifier.height(6.dp))
-                        TextButton(onClick = {
-                            // open app settings so user can manually enable permission
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Button(onClick = { permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }) {
+                                Text("Allow")
                             }
-                            context.startActivity(intent)
-                        }) {
-                            Text("Open Settings")
+                            Spacer(Modifier.height(6.dp))
+                            TextButton(onClick = {
+                                // open app settings so user can manually enable permission
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            }) {
+                                Text("Open Settings")
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Snackbar host to show arrival notification when simulation ends
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 86.dp)
-        )
+            // Snackbar host to show arrival notification when simulation ends
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 86.dp)
+            )
 
-        if (showSheet) {
-            androidx.compose.material3.ModalBottomSheet(
-                onDismissRequest = { handleCloseSheet() },
-                sheetState = sheetState,
-                dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
-            ) {
-                // Branch: if we have results (showResult), show only the summary+Drive button.
-                when (showResult) {
-                    // Minimal summary view so map remains visible
-                    true -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 12.dp, bottom = 24.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+            if (showSheet) {
+                androidx.compose.material3.ModalBottomSheet(
+                    onDismissRequest = { handleCloseSheet() },
+                    sheetState = sheetState,
+                    dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
+                ) {
+                    // Branch: if we have results (showResult), show only the summary+Drive button.
+                    when (showResult) {
+                        // Minimal summary view so map remains visible
+                        true -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 12.dp, bottom = 24.dp)
                             ) {
-                                Text(
-                                    "Route Summary",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Route Summary",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    IconButton(onClick = { handleCloseSheet() }) {
+                                        Icon(Icons.Default.Close, "Close", tint = Grey)
+                                    }
+                                }
+
+                                Spacer(Modifier.height(12.dp))
+
+                                val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
+                                RouteSummaryCard(
+                                    route = selectedRoute,
+                                    originName = (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.name ?: origin,
+                                    destinationName = (state.selectedDestination as? com.doublezero.data.network.PlaceDto)?.name ?: destination,
+                                    onDrive = {
+                                        viewModel.startSimulation()
+                                        handleCloseSheet()
+                                    },
+                                    onReset = {
+                                        viewModel.startNewSearch()
+                                        handleCloseSheet()
+                                    }
                                 )
-                                IconButton(onClick = { handleCloseSheet() }) {
-                                    Icon(Icons.Default.Close, "Close", tint = Grey)
-                                }
                             }
-
-                            Spacer(Modifier.height(12.dp))
-
-                            val selectedRoute = state.routes.getOrNull(state.selectedRouteIndex)
-                            RouteSummaryCard(
-                                route = selectedRoute,
-                                originName = (state.selectedOrigin as? com.doublezero.data.network.PlaceDto)?.name ?: origin,
-                                destinationName = (state.selectedDestination as? com.doublezero.data.network.PlaceDto)?.name ?: destination,
-                                onDrive = {
-                                    viewModel.startSimulation()
-                                    handleCloseSheet()
-                                },
-                                onReset = {
-                                    viewModel.startNewSearch()
-                                    handleCloseSheet()
-                                }
-                            )
                         }
-                    }
-                    // Original search UI (keeps suggestions/inputs)
-                    false -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(bottom = 24.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        // Original search UI (keeps suggestions/inputs)
+                        false -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .padding(bottom = 24.dp)
                             ) {
-                                Text(
-                                    "Search Route",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                IconButton(onClick = { handleCloseSheet() }) {
-                                    Icon(Icons.Default.Close, "Close", tint = Grey)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Search Route",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    IconButton(onClick = { handleCloseSheet() }) {
+                                        Icon(Icons.Default.Close, "Close", tint = Grey)
+                                    }
                                 }
-                            }
 
-                            Spacer(Modifier.height(16.dp))
+                                Spacer(Modifier.height(16.dp))
 
 //                            InfoCardsRow(modifier = Modifier.padding(bottom = 16.dp))
 
-                            // Search inputs
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                                    SearchInput(origin, onValueChange = {
-                                        origin = it
-                                        selectingForOrigin = true
-                                        viewModel.onQueryChanged(it)
-                                    }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
+                                // Search inputs
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                                        SearchInput(origin, onValueChange = {
+                                            origin = it
+                                            selectingForOrigin = true
+                                            viewModel.onQueryChanged(it)
+                                        }, placeholder = "Origin", icon = Icons.Default.LocationOn, iconTint = DarkGreen)
 
-                                    SearchInput(destination, onValueChange = {
-                                        destination = it
-                                        selectingForOrigin = false
-                                        viewModel.onQueryChanged(it)
-                                    }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
-                                }
+                                        SearchInput(destination, onValueChange = {
+                                            destination = it
+                                            selectingForOrigin = false
+                                            viewModel.onQueryChanged(it)
+                                        }, placeholder = "Destination", icon = Icons.Default.LocationOn, iconTint = Red)
+                                    }
 
-                                // Suggestions list
-                                if (state.suggestions.isNotEmpty()) {
-                                    LazyColumn(modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)) {
-                                        items(state.suggestions) { suggestion: com.doublezero.data.network.PlaceSuggestionDto ->
-                                            Card(modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 4.dp)
-                                                .clickable {
-                                                    when (selectingForOrigin) {
-                                                        true -> {
-                                                            viewModel.selectSuggestionAsOrigin(suggestion.placeId)
-                                                            origin = suggestion.mainText
+                                    // Suggestions list
+                                    if (state.suggestions.isNotEmpty()) {
+                                        LazyColumn(modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(200.dp)) {
+                                            items(state.suggestions) { suggestion: com.doublezero.data.network.PlaceSuggestionDto ->
+                                                Card(modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 4.dp)
+                                                    .clickable {
+                                                        when (selectingForOrigin) {
+                                                            true -> {
+                                                                viewModel.selectSuggestionAsOrigin(suggestion.placeId)
+                                                                origin = suggestion.mainText
+                                                            }
+                                                            false -> {
+                                                                viewModel.selectSuggestionAsDestination(suggestion.placeId)
+                                                                destination = suggestion.mainText
+                                                            }
                                                         }
-                                                        false -> {
-                                                            viewModel.selectSuggestionAsDestination(suggestion.placeId)
-                                                            destination = suggestion.mainText
-                                                        }
+                                                        viewModel.onQueryChanged("")
                                                     }
-                                                    viewModel.onQueryChanged("")
-                                                }
-                                            ) {
-                                                Column(modifier = Modifier.padding(12.dp)) {
-                                                    Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
-                                                    Spacer(Modifier.height(4.dp))
-                                                    Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                                ) {
+                                                    Column(modifier = Modifier.padding(12.dp)) {
+                                                        Text(suggestion.mainText, fontWeight = FontWeight.SemiBold)
+                                                        Spacer(Modifier.height(4.dp))
+                                                        Text(suggestion.description, fontSize = 12.sp, color = Grey)
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
-                                    Icon(Icons.Default.Search, null, Modifier.size(20.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Find Route", fontWeight = FontWeight.SemiBold)
-                                }
+                                    Button(onClick = { viewModel.findRoute() }, Modifier.fillMaxWidth().padding(bottom = 24.dp), colors = ButtonDefaults.buttonColors(containerColor = Blue), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 14.dp)) {
+                                        Icon(Icons.Default.Search, null, Modifier.size(20.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Find Route", fontWeight = FontWeight.SemiBold)
+                                    }
 
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        // Route options bar: show only when NOT simulating and steps sheet not visible
-        if (state.routes.isNotEmpty() && !state.isSimulating && !showStepsSheet) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
-                RouteOptionsBar(
-                    routes = state.routes,
-                    selectedIndex = state.selectedRouteIndex,
-                    onSelect = { idx -> viewModel.selectRoute(idx) },
-                    onShowSteps = { idx ->
-                        viewModel.selectRoute(idx)
-                        showStepsSheet = true
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 86.dp) // above bottom nav
-                )
+            // Route options bar: show only when NOT simulating and steps sheet not visible
+            if (state.routes.isNotEmpty() && !state.isSimulating && !showStepsSheet) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                    RouteOptionsBar(
+                        routes = state.routes,
+                        selectedIndex = state.selectedRouteIndex,
+                        onSelect = { idx -> viewModel.selectRoute(idx) },
+                        onShowSteps = { idx ->
+                            viewModel.selectRoute(idx)
+                            showStepsSheet = true
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 86.dp) // above bottom nav
+                    )
+                }
             }
-        }
 
-        // Simulation instruction overlay
-        if (state.isSimulating) {
-            val selRoute = state.routes.getOrNull(state.selectedRouteIndex)
-            val step = selRoute?.steps?.getOrNull(state.simStepIndex)
-            Card(modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 24.dp)
-                .width(340.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF0D47A1))) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text(step?.instruction ?: "Driving...", color = Color.White, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(step?.distance ?: "--", color = Color.White, fontSize = 12.sp)
-                        Text(step?.duration ?: "--", color = Color.White, fontSize = 12.sp)
+            // Simulation instruction overlay
+            if (state.isSimulating) {
+                val selRoute = state.routes.getOrNull(state.selectedRouteIndex)
+                val step = selRoute?.steps?.getOrNull(state.simStepIndex)
+                Card(modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp)
+                    .width(340.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF0D47A1))) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(step?.instruction ?: "Driving...", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(step?.distance ?: "--", color = Color.White, fontSize = 12.sp)
+                            Text(step?.duration ?: "--", color = Color.White, fontSize = 12.sp)
+                        }
                     }
                 }
             }
-        }
 
-        // Steps bottom sheet (shows step-by-step instructions for currently selected route)
-        if (showStepsSheet) {
-            androidx.compose.material3.ModalBottomSheet(
-                onDismissRequest = { showStepsSheet = false },
-                sheetState = sheetState
-            ) {
-                val sel = state.routes.getOrNull(state.selectedRouteIndex)
-                Column(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)) {
-                    Text("Route Steps", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
-                    Spacer(Modifier.height(8.dp))
-                    sel?.steps?.let { steps ->
-                        LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
-                            items(steps) { step: com.doublezero.data.network.StepDto ->
-                                Column(modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp)) {
-                                    Text(step.instruction ?: "", fontWeight = FontWeight.SemiBold)
-                                    Spacer(Modifier.height(4.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Text(step.distance ?: "--", fontSize = 12.sp, color = Grey)
-                                        Text(step.duration ?: "--", fontSize = 12.sp, color = Grey)
+            // Steps bottom sheet (shows step-by-step instructions for currently selected route)
+            if (showStepsSheet) {
+                androidx.compose.material3.ModalBottomSheet(
+                    onDismissRequest = { showStepsSheet = false },
+                    sheetState = sheetState
+                ) {
+                    val sel = state.routes.getOrNull(state.selectedRouteIndex)
+                    Column(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)) {
+                        Text("Route Steps", fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
+                        Spacer(Modifier.height(8.dp))
+                        sel?.steps?.let { steps ->
+                            LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
+                                items(steps) { step: com.doublezero.data.network.StepDto ->
+                                    Column(modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)) {
+                                        Text(step.instruction ?: "", fontWeight = FontWeight.SemiBold)
+                                        Spacer(Modifier.height(4.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Text(step.distance ?: "--", fontSize = 12.sp, color = Grey)
+                                            Text(step.duration ?: "--", fontSize = 12.sp, color = Grey)
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } ?: Text("No steps available", color = Grey)
+                        } ?: Text("No steps available", color = Grey)
+                    }
                 }
             }
         }
