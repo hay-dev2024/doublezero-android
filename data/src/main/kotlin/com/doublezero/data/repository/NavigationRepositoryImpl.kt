@@ -127,10 +127,11 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.HEADERS
             })
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)  // 연결 타임아웃 증가
             .readTimeout(0, java.util.concurrent.TimeUnit.SECONDS)  // 무제한 - SSE는 장시간 연결 유지
-            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS)  // Keep-alive
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)  // 쓰기 타임아웃 증가
+            .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)  // Keep-alive (더 자주)
+            .retryOnConnectionFailure(true)  // 자동 재시도 활성화
             .build()
 
         val request = Request.Builder()

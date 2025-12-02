@@ -410,7 +410,7 @@ class HomeViewModel @Inject constructor(
 
         sseJob = viewModelScope.launch {
             var retryCount = 0
-            val maxRetries = 5
+            val maxRetries = 10  // 재시도 횟수 증가 (5 → 10)
 
             while (retryCount < maxRetries && _uiState.value.isSimulating) {
                 try {
@@ -445,7 +445,8 @@ class HomeViewModel @Inject constructor(
                     retryCount++
 
                     if (retryCount < maxRetries && _uiState.value.isSimulating) {
-                        val waitSec = kotlin.math.min(retryCount * 2, 10)
+                        // 재연결 대기 시간: 3초 고정 (예측 가능한 동작)
+                        val waitSec = 3
                         android.util.Log.d("HomeVM SSE", "Retrying in $waitSec seconds...")
                         delay(waitSec * 1000L)
                     }
@@ -456,8 +457,8 @@ class HomeViewModel @Inject constructor(
                 android.util.Log.e("HomeVM SSE", "Max retries ($maxRetries) reached, giving up")
                 _uiState.update {
                     it.copy(
-                        riskMessage = "Connection lost - Unable to receive risk updates",
-                        riskUrgency = "medium"
+                        riskMessage = "⚠️ Connection lost - Check network and restart navigation",
+                        riskUrgency = "high"
                     )
                 }
             }
