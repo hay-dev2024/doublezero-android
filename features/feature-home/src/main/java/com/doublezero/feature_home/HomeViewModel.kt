@@ -29,7 +29,8 @@ import kotlin.math.sqrt
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val placesRepository: PlacesRepository,
-    private val navigationRepository: NavigationRepository
+    private val navigationRepository: NavigationRepository,
+    private val authRepository: com.doublezero.data.repository.AuthRepository
 ) : ViewModel() {
 
     data class HomeUiState(
@@ -43,7 +44,11 @@ class HomeViewModel @Inject constructor(
         // Simulation State
         val isSimulating: Boolean = false,
         val simPosition: LatLng? = null,
-        val simStepIndex: Int = -1
+        val simStepIndex: Int = -1,
+        // SSE Session State
+        val sessionId: String? = null,
+        val riskMessage: String? = null,
+        val riskUrgency: String? = null
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -52,6 +57,7 @@ class HomeViewModel @Inject constructor(
     private val queryFlow = MutableStateFlow("")
 
     private var simulationJob: Job? = null
+    private var sseJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -117,14 +123,14 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Use NavigationRepository.computeRoute which returns a List<RouteDto>
-                val result = navigationRepository.computeRoute(
+                // Use NavigationRepository.getRoute which returns a List<RouteDto>
+                val result = navigationRepository.getRoute(
                     originLat = origin.lat,
-                    originLng = origin.lon,
+                    originLon = origin.lon,
                     destLat = destination.lat,
-                    destLng = destination.lon,
-                    sampleCount = 3, // client default
-                    includeRisk = true, // ask server for risk data
+                    destLon = destination.lon,
+                    alternatives = true,
+                    travelMode = "DRIVE",
                     token = null
                 )
 
@@ -149,8 +155,20 @@ class HomeViewModel @Inject constructor(
      * UI label suggestion: "New Search"
      */
     fun startNewSearch() {
-        // cancel any running simulation
+        // cancel any running simulation and SSE connection
         simulationJob?.cancel()
+        sseJob?.cancel()
+
+        // Stop SSE session if active
+        val sessionId = _uiState.value.sessionId
+        if (sessionId != null) {
+            viewModelScope.launch {
+                val token: String? = authRepository.getAccessToken()
+                if (token != null) {
+                    navigationRepository.stopSession(sessionId, token)
+                }
+            }
+        }
 
         _uiState.update {
             it.copy(
@@ -162,7 +180,10 @@ class HomeViewModel @Inject constructor(
                 error = null,
                 isSimulating = false,
                 simPosition = null,
-                simStepIndex = -1
+                simStepIndex = -1,
+                sessionId = null,
+                riskMessage = null,
+                riskUrgency = null
             )
         }
     }
@@ -179,8 +200,52 @@ class HomeViewModel @Inject constructor(
         updateIntervalMs: Long = 50L
     ) {
         simulationJob?.cancel() // Cancel any previous simulation
+        sseJob?.cancel() // Cancel any previous SSE connection
+
         val route = _uiState.value.routes.getOrNull(_uiState.value.selectedRouteIndex)
         if (route == null) return
+
+        val polyline = route.polyline
+        if (polyline.isNullOrBlank()) return
+
+        // Start SSE session first
+        val sessionId = java.util.UUID.randomUUID().toString()
+        // Use SimpleDateFormat for API level 24+ compatibility
+        val startTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date()) // CRITICAL: Use current time!
+
+        viewModelScope.launch {
+            try {
+                // Get JWT token from AuthRepository
+                val token: String? = authRepository.getAccessToken()
+                if (token == null) {
+                    android.util.Log.e("HomeVM", "Failed to get JWT token")
+                    return@launch
+                }
+
+                android.util.Log.d("HomeVM", "Starting session with token: ${token.substring(0, minOf(20, token.length))}...")
+                android.util.Log.d("HomeVM", "Session ID: $sessionId")
+                android.util.Log.d("HomeVM", "Start time: $startTime")
+
+                val sessionResponse = navigationRepository.startSession(
+                    sessionId = sessionId,
+                    polyline = polyline,
+                    startTime = startTime,
+                    estimatedSpeedKmh = 60,
+                    token = token
+                )
+
+                if (sessionResponse != null) {
+                    _uiState.update { it.copy(sessionId = sessionId) }
+
+                    // Connect to SSE stream
+                    connectToRiskStream(sessionId, token)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "Failed to start session", e)
+            }
+        }
 
         // If steps are present and have per-step info, prefer step-wise simulation
         val steps = route.steps
@@ -310,12 +375,54 @@ class HomeViewModel @Inject constructor(
 
     fun stopSimulation() {
         simulationJob?.cancel()
+        sseJob?.cancel()
+
+        // Stop SSE session
+        val sessionId = _uiState.value.sessionId
+        if (sessionId != null) {
+            viewModelScope.launch {
+                val token: String? = authRepository.getAccessToken()
+                if (token != null) {
+                    navigationRepository.stopSession(sessionId, token)
+                }
+            }
+        }
+
         _uiState.update {
             it.copy(
                 isSimulating = false,
                 simPosition = null,
-                simStepIndex = -1
+                simStepIndex = -1,
+                sessionId = null,
+                riskMessage = null,
+                riskUrgency = null
             )
+        }
+    }
+
+    /**
+     * Connect to SSE stream to receive real-time risk updates every 30 seconds
+     */
+    private fun connectToRiskStream(sessionId: String, token: String) {
+        sseJob?.cancel()
+
+        sseJob = viewModelScope.launch {
+            try {
+                navigationRepository.connectRiskStream(sessionId, token)
+                    .collect { riskUpdate ->
+                        android.util.Log.d("HomeVM", "Risk update received: ${riskUpdate.summary?.message}")
+
+                        // Update UI state with risk message
+                        _uiState.update {
+                            it.copy(
+                                riskMessage = riskUpdate.summary?.message,
+                                riskUrgency = riskUpdate.summary?.urgency
+                            )
+                        }
+                    }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "SSE connection error", e)
+            }
         }
     }
 

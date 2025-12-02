@@ -10,4 +10,10 @@ interface AuthRepository {
     suspend fun loginWithGoogle(idToken: String)
 
     suspend fun logout()
+
+    /**
+     * Get current access token (for backend API calls like navigation session)
+     * Returns null if no token available
+     */
+    suspend fun getAccessToken(): String?
 }

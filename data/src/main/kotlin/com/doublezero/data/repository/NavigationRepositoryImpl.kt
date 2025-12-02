@@ -1,12 +1,17 @@
 package com.doublezero.data.repository
 
 import android.util.Log
-import com.doublezero.data.network.PlaceInputDto
-import com.doublezero.data.network.NavigationApi
-import com.doublezero.data.network.RouteRequestDto
-import com.doublezero.data.network.RouteDto
+import com.doublezero.data.network.*
+import com.google.gson.Gson
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Inject
@@ -34,26 +39,20 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
 
     private val navigationApi: NavigationApi by lazy { retrofit.create(NavigationApi::class.java) }
 
-    override suspend fun computeRoute(
+    override suspend fun getRoute(
         originLat: Double,
-        originLng: Double,
+        originLon: Double,
         destLat: Double,
-        destLng: Double,
-        sampleCount: Int,
-        includeRisk: Boolean,
+        destLon: Double,
+        alternatives: Boolean,
+        travelMode: String,
         token: String?
     ): List<RouteDto> {
-        // enforce client-side cap on sampleCount to avoid excessive payload
-        val cappedSamples = sampleCount.coerceAtMost(5).coerceAtLeast(1)
-
         val req = RouteRequestDto(
-            origin = PlaceInputDto(lat = originLat, lon = originLng),
-            destination = PlaceInputDto(lat = destLat, lon = destLng),
-            // ask server to compute one alternative route if available
-            alternatives = true,
-
-            sampleCount = cappedSamples,
-            includeRisk = includeRisk
+            origin = PlaceInputDto(lat = originLat, lon = originLon),
+            destination = PlaceInputDto(lat = destLat, lon = destLon),
+            alternatives = alternatives,
+            travelMode = travelMode
         )
 
         return try {
@@ -65,7 +64,7 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
                 val limited = if (routes.size > 2) routes.take(2) else routes
                 // Debug log: show how many routes backend returned vs limited
                 try {
-                    Log.d("NavRepo", "computeRoute: received ${routes.size} routes from backend, limited to ${limited.size}")
+                    Log.d("NavRepo", "getRoute: received ${routes.size} routes from backend, limited to ${limited.size}")
                 } catch (_: Throwable) {
                     // ignore logging errors in non-Android test contexts
                 }
@@ -75,8 +74,110 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
             }
         } catch (e: Exception) {
             // network error or parsing error -> return empty list so caller can handle fallback
-            Log.w("NavRepo", "computeRoute failed", e)
+            Log.w("NavRepo", "getRoute failed", e)
             emptyList()
+        }
+    }
+
+    override suspend fun startSession(
+        sessionId: String,
+        polyline: String,
+        startTime: String,
+        estimatedSpeedKmh: Int,
+        token: String
+    ): StartSessionResponse? {
+        return try {
+            val req = StartSessionRequest(
+                sessionId = sessionId,
+                polyline = polyline,
+                startTime = startTime,
+                estimatedSpeedKmh = estimatedSpeedKmh
+            )
+            val resp = navigationApi.startSession(req, "Bearer $token")
+            if (resp.isSuccessful) {
+                resp.body()
+            } else {
+                Log.e("NavRepo", "Failed to start session: ${resp.code()}")
+                throw IllegalStateException("Failed to start session: ${resp.code()}")
+            }
+        } catch (e: Exception) {
+            Log.e("NavRepo", "startSession error", e)
+            null
+        }
+    }
+
+    override suspend fun stopSession(sessionId: String, token: String): Boolean {
+        return try {
+            val req = StopSessionRequest(sessionId)
+            val resp = navigationApi.stopSession(req, "Bearer $token")
+            resp.isSuccessful
+        } catch (e: Exception) {
+            Log.e("NavRepo", "stopSession error", e)
+            false
+        }
+    }
+
+    override fun connectRiskStream(
+        sessionId: String,
+        token: String
+    ): Flow<RiskUpdateEvent> = callbackFlow {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+            .build()
+
+        val request = Request.Builder()
+            .url("http://10.0.2.2:3000/navigation/session/stream?sessionId=$sessionId")
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        val gson = Gson()
+
+        val eventSource = EventSources.createFactory(client).newEventSource(
+            request,
+            object : EventSourceListener() {
+                override fun onEvent(
+                    eventSource: EventSource,
+                    id: String?,
+                    type: String?,
+                    data: String
+                ) {
+                    Log.d("NavRepo SSE", "Received event: type=$type, id=$id")
+                    try {
+                        when (type) {
+                            "risk-update" -> {
+                                val update = gson.fromJson(data, RiskUpdateEvent::class.java)
+                                trySend(update)
+                            }
+                            "session-ended" -> {
+                                Log.d("NavRepo SSE", "Session ended")
+                                close()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("NavRepo SSE", "Parse error for $type: $data", e)
+                    }
+                }
+
+                override fun onFailure(
+                    eventSource: EventSource,
+                    t: Throwable?,
+                    response: okhttp3.Response?
+                ) {
+                    Log.e("NavRepo SSE", "Connection failed: ${response?.code}", t)
+                    close(t)
+                }
+
+                override fun onOpen(eventSource: EventSource, response: okhttp3.Response) {
+                    Log.d("NavRepo SSE", "Connection opened")
+                }
+            }
+        )
+
+        awaitClose {
+            Log.d("NavRepo SSE", "Closing connection")
+            eventSource.cancel()
         }
     }
 }

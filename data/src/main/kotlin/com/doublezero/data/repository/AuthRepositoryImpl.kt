@@ -128,4 +128,8 @@ class AuthRepositoryImpl @Inject constructor(
         sharedPreferences.edit().clear().apply()
         _userProfile.value = null
     }
+
+    override suspend fun getAccessToken(): String? {
+        return sharedPreferences.getString("access_token", null)
+    }
 }

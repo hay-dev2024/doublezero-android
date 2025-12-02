@@ -142,6 +142,16 @@ fun HomeScreen(
         wasSimulating = state.isSimulating
     }
 
+    // Show risk alerts from SSE updates
+    LaunchedEffect(state.riskMessage) {
+        state.riskMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+        }
+    }
+
     LaunchedEffect(Unit) {
         // check current permission
         locationPermissionGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED

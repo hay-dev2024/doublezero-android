@@ -66,7 +66,8 @@ data class RiskSummaryDto(
     val maxWeight: Double?,
     val hotspotCount: Int?,
     val hotspotThreshold: Double?,
-    val message: String?
+    val message: String?,
+    val urgency: String? = null // "low", "medium", or "high"
 )
 
 data class RouteDto(
@@ -91,10 +92,65 @@ data class RoutesResponseDto(
     val routes: List<RouteDto>
 )
 
+// SSE Session DTOs
+data class StartSessionRequest(
+    val sessionId: String,
+    val polyline: String,
+    val startTime: String,
+    val estimatedSpeedKmh: Int = 60
+)
+
+data class StartSessionResponse(
+    val sessionId: String,
+    val status: String,
+    val streamUrl: String,
+    val estimatedDuration: Int,
+    val totalDistance: Int
+)
+
+data class StopSessionRequest(
+    val sessionId: String
+)
+
+data class StopSessionResponse(
+    val sessionId: String,
+    val status: String,
+    val duration: Int
+)
+
+// SSE Event DTOs
+data class CurrentPositionDto(
+    val lat: Double,
+    val lon: Double,  // Backend uses 'lon' not 'lng'
+    val distanceFromStart: Double,
+    val remainingDistance: Double,
+    val currentSegmentIndex: Int? = null
+)
+
+data class RiskUpdateEvent(
+    val sessionId: String,
+    val timestamp: String,
+    val currentPosition: CurrentPositionDto,
+    val riskPoints: List<RiskPointDto>,
+    val summary: RiskSummaryDto?
+)
+
 interface NavigationApi {
     @POST("/navigation/route")
     suspend fun computeRoute(
         @Body req: RouteRequestDto,
         @Header("Authorization") auth: String? = null // navigation typically does not require auth
     ): Response<RoutesResponseDto>
+
+    @POST("/navigation/session/start")
+    suspend fun startSession(
+        @Body req: StartSessionRequest,
+        @Header("Authorization") auth: String
+    ): Response<StartSessionResponse>
+
+    @POST("/navigation/session/stop")
+    suspend fun stopSession(
+        @Body req: StopSessionRequest,
+        @Header("Authorization") auth: String
+    ): Response<StopSessionResponse>
 }
