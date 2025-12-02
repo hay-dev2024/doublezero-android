@@ -406,22 +406,60 @@ class HomeViewModel @Inject constructor(
     private fun connectToRiskStream(sessionId: String, token: String) {
         sseJob?.cancel()
 
-        sseJob = viewModelScope.launch {
-            try {
-                navigationRepository.connectRiskStream(sessionId, token)
-                    .collect { riskUpdate ->
-                        android.util.Log.d("HomeVM", "Risk update received: ${riskUpdate.summary?.message}")
+        android.util.Log.d("HomeVM SSE", "Starting SSE connection for session: $sessionId")
 
-                        // Update UI state with risk message
-                        _uiState.update {
-                            it.copy(
-                                riskMessage = riskUpdate.summary?.message,
-                                riskUrgency = riskUpdate.summary?.urgency
-                            )
+        sseJob = viewModelScope.launch {
+            var retryCount = 0
+            val maxRetries = 5
+
+            while (retryCount < maxRetries && _uiState.value.isSimulating) {
+                try {
+                    android.util.Log.d("HomeVM SSE", "Connecting to risk stream (attempt ${retryCount + 1}/$maxRetries)")
+
+                    navigationRepository.connectRiskStream(sessionId, token)
+                        .collect { riskUpdate ->
+                            android.util.Log.d("HomeVM SSE", "Risk update received!")
+                            android.util.Log.d("HomeVM SSE", "Message: ${riskUpdate.summary?.message}")
+                            android.util.Log.d("HomeVM SSE", "Urgency: ${riskUpdate.summary?.urgency}")
+                            android.util.Log.d("HomeVM SSE", "Risk level: ${riskUpdate.summary?.level}")
+
+                            retryCount = 0  // 성공 시 재시도 카운트 리셋
+
+                            // Update UI state with risk message
+                            _uiState.update {
+                                it.copy(
+                                    riskMessage = riskUpdate.summary?.message,
+                                    riskUrgency = riskUpdate.summary?.urgency
+                                )
+                            }
+
+                            android.util.Log.d("HomeVM SSE", "UI state updated with risk message")
                         }
+
+                    // Flow가 정상 종료된 경우 (session-ended)
+                    android.util.Log.d("HomeVM SSE", "Stream ended normally")
+                    break
+
+                } catch (e: Exception) {
+                    android.util.Log.e("HomeVM SSE", "Connection error (attempt ${retryCount + 1}/$maxRetries)", e)
+                    retryCount++
+
+                    if (retryCount < maxRetries && _uiState.value.isSimulating) {
+                        val waitSec = kotlin.math.min(retryCount * 2, 10)
+                        android.util.Log.d("HomeVM SSE", "Retrying in $waitSec seconds...")
+                        delay(waitSec * 1000L)
                     }
-            } catch (e: Exception) {
-                android.util.Log.e("HomeVM", "SSE connection error", e)
+                }
+            }
+
+            if (retryCount >= maxRetries) {
+                android.util.Log.e("HomeVM SSE", "Max retries ($maxRetries) reached, giving up")
+                _uiState.update {
+                    it.copy(
+                        riskMessage = "Connection lost - Unable to receive risk updates",
+                        riskUrgency = "medium"
+                    )
+                }
             }
         }
     }

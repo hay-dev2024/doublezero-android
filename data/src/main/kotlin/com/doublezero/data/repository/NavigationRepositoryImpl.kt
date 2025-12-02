@@ -121,63 +121,97 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
         sessionId: String,
         token: String
     ): Flow<RiskUpdateEvent> = callbackFlow {
+        Log.d("NavRepo SSE", "Setting up SSE connection for session: $sessionId")
+
         val client = OkHttpClient.Builder()
             .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = HttpLoggingInterceptor.Level.HEADERS
             })
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(0, java.util.concurrent.TimeUnit.SECONDS)  // 무제한 - SSE는 장시간 연결 유지
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS)  // Keep-alive
             .build()
 
         val request = Request.Builder()
             .url("http://10.0.2.2:3000/navigation/session/stream?sessionId=$sessionId")
             .header("Authorization", "Bearer $token")
+            .header("Accept", "text/event-stream")
+            .header("Cache-Control", "no-cache")
             .build()
 
         val gson = Gson()
+        var eventSource: EventSource? = null
 
-        val eventSource = EventSources.createFactory(client).newEventSource(
-            request,
-            object : EventSourceListener() {
-                override fun onEvent(
-                    eventSource: EventSource,
-                    id: String?,
-                    type: String?,
-                    data: String
-                ) {
-                    Log.d("NavRepo SSE", "Received event: type=$type, id=$id")
-                    try {
-                        when (type) {
-                            "risk-update" -> {
-                                val update = gson.fromJson(data, RiskUpdateEvent::class.java)
-                                trySend(update)
+        try {
+            eventSource = EventSources.createFactory(client).newEventSource(
+                request,
+                object : EventSourceListener() {
+                    override fun onOpen(eventSource: EventSource, response: okhttp3.Response) {
+                        Log.d("NavRepo SSE", "Connection opened successfully")
+                    }
+
+                    override fun onEvent(
+                        eventSource: EventSource,
+                        id: String?,
+                        type: String?,
+                        data: String
+                    ) {
+                        Log.d("NavRepo SSE", "Received event: type=$type, id=$id, data length=${data.length}")
+
+                        try {
+                            when (type) {
+                                "risk-update" -> {
+                                    Log.d("NavRepo SSE", "Parsing risk-update: $data")
+                                    val update = gson.fromJson(data, RiskUpdateEvent::class.java)
+                                    Log.d("NavRepo SSE", "Parsed successfully, sending to Flow")
+                                    val result = trySend(update)
+                                    if (result.isSuccess) {
+                                        Log.d("NavRepo SSE", "Event sent to Flow successfully")
+                                    } else {
+                                        Log.e("NavRepo SSE", "Failed to send event to Flow: ${result.exceptionOrNull()}")
+                                    }
+                                }
+                                "session-ended" -> {
+                                    Log.d("NavRepo SSE", "Session ended event received")
+                                    close()
+                                }
+                                "heartbeat" -> {
+                                    Log.d("NavRepo SSE", "Heartbeat received")
+                                }
+                                else -> {
+                                    Log.d("NavRepo SSE", "Unknown event type: $type")
+                                }
                             }
-                            "session-ended" -> {
-                                Log.d("NavRepo SSE", "Session ended")
-                                close()
-                            }
+                        } catch (e: Exception) {
+                            Log.e("NavRepo SSE", "Parse/send error for $type: $data", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e("NavRepo SSE", "Parse error for $type: $data", e)
+                    }
+
+                    override fun onFailure(
+                        eventSource: EventSource,
+                        t: Throwable?,
+                        response: okhttp3.Response?
+                    ) {
+                        val msg = "Connection failed: code=${response?.code}, message=${t?.message}"
+                        Log.e("NavRepo SSE", "$msg", t)
+                        close(t)
+                    }
+
+                    override fun onClosed(eventSource: EventSource) {
+                        Log.d("NavRepo SSE", "Connection closed by server")
+                        close()
                     }
                 }
-
-                override fun onFailure(
-                    eventSource: EventSource,
-                    t: Throwable?,
-                    response: okhttp3.Response?
-                ) {
-                    Log.e("NavRepo SSE", "Connection failed: ${response?.code}", t)
-                    close(t)
-                }
-
-                override fun onOpen(eventSource: EventSource, response: okhttp3.Response) {
-                    Log.d("NavRepo SSE", "Connection opened")
-                }
-            }
-        )
+            )
+        } catch (e: Exception) {
+            Log.e("NavRepo SSE", "Failed to create EventSource", e)
+            close(e)
+        }
 
         awaitClose {
-            Log.d("NavRepo SSE", "Closing connection")
-            eventSource.cancel()
+            Log.d("NavRepo SSE", "Closing SSE connection")
+            eventSource?.cancel()
         }
     }
 }
