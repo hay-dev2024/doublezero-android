@@ -135,6 +135,11 @@ data class RiskUpdateEvent(
     val summary: RiskSummaryDto?
 )
 
+data class SessionEndedEvent(
+    val sessionId: String?,
+    val reason: String?
+)
+
 interface NavigationApi {
     @POST("/navigation/route")
     suspend fun computeRoute(

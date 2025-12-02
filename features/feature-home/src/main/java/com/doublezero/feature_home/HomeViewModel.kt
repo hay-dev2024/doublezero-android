@@ -416,6 +416,7 @@ class HomeViewModel @Inject constructor(
                 try {
                     android.util.Log.d("HomeVM SSE", "Connecting to risk stream (attempt ${retryCount + 1}/$maxRetries)")
 
+                    var shouldStop = false
                     navigationRepository.connectRiskStream(sessionId, token)
                         .collect { riskUpdate ->
                             android.util.Log.d("HomeVM SSE", "Risk update received!")
@@ -425,19 +426,48 @@ class HomeViewModel @Inject constructor(
 
                             retryCount = 0  // 성공 시 재시도 카운트 리셋
 
-                            // Update UI state with risk message
-                            _uiState.update {
-                                it.copy(
-                                    riskMessage = riskUpdate.summary?.message,
-                                    riskUrgency = riskUpdate.summary?.urgency
-                                )
-                            }
+                            // Check if this is a session-ended event
+                            if (riskUpdate.summary?.level == "End") {
+                                android.util.Log.d("HomeVM SSE", "Session ended - stopping simulation and SSE")
 
-                            android.util.Log.d("HomeVM SSE", "UI state updated with risk message")
+                                // Update UI with destination reached message
+                                _uiState.update {
+                                    it.copy(
+                                        riskMessage = riskUpdate.summary?.message,
+                                        riskUrgency = "low",
+                                        isSimulating = false  // Stop simulation
+                                    )
+                                }
+
+                                // Stop simulation and close SSE connection completely
+                                simulationJob?.cancel()
+                                sseJob?.cancel()
+
+                                // Stop SSE session on server
+                                val token: String? = authRepository.getAccessToken()
+                                if (token != null) {
+                                    navigationRepository.stopSession(sessionId, token)
+                                }
+
+                                shouldStop = true  // Signal to break out of collect loop
+                                return@collect  // Exit the flow collection immediately
+                            } else {
+                                // Update UI state with risk message (only during active navigation)
+                                if (_uiState.value.isSimulating) {
+                                    _uiState.update {
+                                        it.copy(
+                                            riskMessage = riskUpdate.summary?.message,
+                                            riskUrgency = riskUpdate.summary?.urgency
+                                        )
+                                    }
+                                    android.util.Log.d("HomeVM SSE", "UI state updated with risk message")
+                                }
+                            }
                         }
 
                     // Flow가 정상 종료된 경우 (session-ended)
                     android.util.Log.d("HomeVM SSE", "Stream ended normally")
+                    // Exit retry loop
                     break
 
                 } catch (e: Exception) {
@@ -457,7 +487,7 @@ class HomeViewModel @Inject constructor(
                 android.util.Log.e("HomeVM SSE", "Max retries ($maxRetries) reached, giving up")
                 _uiState.update {
                     it.copy(
-                        riskMessage = "⚠️ Connection lost - Check network and restart navigation",
+                        riskMessage = "Connection lost - Check network and restart navigation",
                         riskUrgency = "high"
                     )
                 }

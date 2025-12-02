@@ -174,7 +174,30 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
                                     }
                                 }
                                 "session-ended" -> {
-                                    Log.d("NavRepo SSE", "Session ended event received")
+                                    Log.d("NavRepo SSE", "Session ended event received - parsing reason")
+                                    try {
+                                        val endEvent = gson.fromJson(data, SessionEndedEvent::class.java)
+                                        Log.d("NavRepo SSE", "Session ended: reason=${endEvent.reason}")
+                                        // Send a special event to signal session end to ViewModel
+                                        val endMarker = RiskUpdateEvent(
+                                            sessionId = endEvent.sessionId ?: sessionId,
+                                            timestamp = "",
+                                            currentPosition = CurrentPositionDto(0.0, 0.0, 0.0, 0.0),
+                                            riskPoints = emptyList(),
+                                            summary = RiskSummaryDto(
+                                                level = "End",
+                                                avgWeight = 0.0,
+                                                maxWeight = 0.0,
+                                                hotspotCount = 0,
+                                                hotspotThreshold = 0.0,
+                                                message = "Destination reached - Navigation complete",
+                                                urgency = "low"
+                                            )
+                                        )
+                                        trySend(endMarker)
+                                    } catch (e: Exception) {
+                                        Log.e("NavRepo SSE", "Failed to parse session-ended event", e)
+                                    }
                                     close()
                                 }
                                 "heartbeat" -> {
