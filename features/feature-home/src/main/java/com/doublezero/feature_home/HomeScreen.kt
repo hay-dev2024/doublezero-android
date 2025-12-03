@@ -86,6 +86,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.PolyUtil
+import com.google.maps.android.SphericalUtil
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.maps.android.compose.CameraPositionState
 
@@ -245,6 +246,29 @@ fun HomeScreen(
         var showStepsSheet by remember { mutableStateOf(false) }
 
         // Always show the Map (so tiles load even if user hasn't granted location permission).
+        val initialProviders = remember(state.initialRiskPoints, state.dynamicRiskPoints) {
+            // To avoid overlay stacking/darkening: filter initial risk points that overlap dynamic points
+            val thresholdMeters = 30.0
+            val initial = state.initialRiskPoints ?: emptyList()
+            val dynamic = state.dynamicRiskPoints ?: emptyList()
+
+            val filteredInitial = if (initial.isEmpty() || dynamic.isEmpty()) {
+                initial
+            } else {
+                initial.filter { initPt ->
+                    dynamic.none { dyn ->
+                        val d = SphericalUtil.computeDistanceBetween(
+                            LatLng(initPt.lat, initPt.lon),
+                            LatLng(dyn.lat, dyn.lon)
+                        )
+                        d <= thresholdMeters
+                    }
+                }
+            }
+
+            RiskHeatmapUtils.createHeatmapFromRiskPoints(filteredInitial)
+        }
+
         MapScreenRoutes(
             routes = state.routes,
             selectedIndex = state.selectedRouteIndex,
@@ -253,7 +277,7 @@ fun HomeScreen(
             cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize(),
             simulatedPosition = state.simPosition,
-            heatmapProviders = state.initialHeatmapProviders,
+            heatmapProviders = initialProviders,
             dynamicRiskPoints = state.dynamicRiskPoints  // 🚨 동적 히트맵 데이터 전달
         )
 

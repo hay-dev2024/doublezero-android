@@ -51,8 +51,8 @@ class HomeViewModel @Inject constructor(
         val riskMessage: String? = null,
         val riskUrgency: String? = null,
         val riskUpdateCount: Int = 0,
-        // Heatmap State (tier별로 분리된 프로바이더 리스트)
-        val initialHeatmapProviders: List<com.google.maps.android.heatmaps.HeatmapTileProvider> = emptyList(),
+        // Heatmap State: store initial risk points (from route) and dynamic risk points (from SSE)
+        val initialRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList(),
         val dynamicRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList()
     )
 
@@ -151,7 +151,7 @@ class HomeViewModel @Inject constructor(
                     it.copy(
                         routes = result,
                         selectedRouteIndex = if (result.isNotEmpty()) 0 else -1,
-                        initialHeatmapProviders = initialHeatmaps
+                        initialRiskPoints = result.getOrNull(0)?.riskPoints ?: emptyList()
                     )
                 }
             } catch (e: Exception) {
@@ -199,7 +199,7 @@ class HomeViewModel @Inject constructor(
                 sessionId = null,
                 riskMessage = null,
                 riskUrgency = null,
-                initialHeatmapProviders = emptyList(),
+                initialRiskPoints = emptyList(),
                 dynamicRiskPoints = emptyList()
             )
         }
