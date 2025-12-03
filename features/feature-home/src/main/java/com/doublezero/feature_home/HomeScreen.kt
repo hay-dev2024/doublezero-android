@@ -253,7 +253,8 @@ fun HomeScreen(
             cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize(),
             simulatedPosition = state.simPosition,
-            heatmapProviders = state.initialHeatmapProviders
+            heatmapProviders = state.initialHeatmapProviders,
+            dynamicRiskPoints = state.dynamicRiskPoints  // 🚨 동적 히트맵 데이터 전달
         )
 
         // When routes change, animate camera to fit the selected route (if possible)
@@ -773,7 +774,8 @@ private fun MapScreenRoutes(
     cameraPositionState: com.google.maps.android.compose.CameraPositionState,
     locationPermissionGranted: Boolean = false,
     simulatedPosition: LatLng? = null,
-    heatmapProviders: List<com.google.maps.android.heatmaps.HeatmapTileProvider> = emptyList()
+    heatmapProviders: List<com.google.maps.android.heatmaps.HeatmapTileProvider> = emptyList(),
+    dynamicRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList()  // 🚨 동적 히트맵 데이터
 ) {
     val properties = com.google.maps.android.compose.MapProperties(
         isMyLocationEnabled = locationPermissionGranted,
@@ -915,6 +917,24 @@ private fun MapScreenRoutes(
                 transparency = 0.3f,
                 zIndex = 2.5f + index * 0.1f  // 각 tier별로 약간씩 다른 z-index
             )
+        }
+
+        // 🚨 Display dynamic heatmap from SSE (30초 주기 업데이트)
+        if (dynamicRiskPoints.isNotEmpty()) {
+            android.util.Log.d("MapScreenRoutes", "Rendering dynamic heatmap with ${dynamicRiskPoints.size} points")
+
+            // RiskHeatmapUtils를 사용하여 동적 히트맵 프로바이더 생성
+            val dynamicProviders = remember(dynamicRiskPoints) {
+                RiskHeatmapUtils.createHeatmapFromRiskPoints(dynamicRiskPoints)
+            }
+
+            dynamicProviders.forEachIndexed { index, provider ->
+                TileOverlay(
+                    tileProvider = provider,
+                    transparency = 0.2f,  // 약간 더 투명하게 (동적 강조)
+                    zIndex = 3.0f + index * 0.1f  // 초기 히트맵 위에 렌더링
+                )
+            }
         }
     }
 }

@@ -118,23 +118,16 @@ class HomeViewModel @Inject constructor(
     }
 
     fun findRoute() {
-        android.util.Log.d("HomeVM", "🔍 findRoute() called")
         val origin = _uiState.value.selectedOrigin
         val destination = _uiState.value.selectedDestination
 
-        android.util.Log.d("HomeVM", "Origin: $origin")
-        android.util.Log.d("HomeVM", "Destination: $destination")
-
         if (origin == null || destination == null) {
-            android.util.Log.e("HomeVM", "❌ Origin or destination is null")
             _uiState.update { it.copy(error = "Origin and destination must be selected.") }
             return
         }
 
-        android.util.Log.d("HomeVM", "✅ Starting route search...")
         viewModelScope.launch {
             try {
-                // Use NavigationRepository.getRoute which returns a List<RouteDto>
                 val result = navigationRepository.getRoute(
                     originLat = origin.lat,
                     originLon = origin.lon,
@@ -143,22 +136,17 @@ class HomeViewModel @Inject constructor(
                     alternatives = true,
                     travelMode = "DRIVE",
                     token = null,
-                    includeRisk = true,  // Request risk data from backend
-                    sampleCount = 10     // Request 10 sample points for better heatmap
+                    includeRisk = true,
+                    sampleCount = 10
                 )
 
-                android.util.Log.d("HomeVM", "✅ Route received: ${result.size} routes")
-
-                // Create initial heatmap from first route's riskPoints (tier별로 분리)
+                // Create initial heatmap from first route's riskPoints
                 val initialHeatmaps = if (result.isNotEmpty() && result[0].riskPoints != null) {
-                    android.util.Log.d("HomeVM", "📍 Creating heatmap from ${result[0].riskPoints!!.size} risk points")
                     RiskHeatmapUtils.createHeatmapFromRiskPoints(result[0].riskPoints!!)
                 } else {
-                    android.util.Log.w("HomeVM", "⚠️ No risk points available for heatmap")
                     emptyList()
                 }
 
-                android.util.Log.d("HomeVM", "✅ Updating UI state with routes and ${initialHeatmaps.size} heatmap providers")
                 _uiState.update {
                     it.copy(
                         routes = result,
@@ -167,7 +155,7 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                android.util.Log.e("HomeVM", "❌ Failed to find route: ${e.message}", e)
+                android.util.Log.e("HomeVM", "Failed to find route: ${e.message}")
                 _uiState.update { it.copy(error = "Failed to find route: ${e.message}") }
             }
         }
@@ -253,16 +241,11 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Get JWT token from AuthRepository
                 val token: String? = authRepository.getAccessToken()
                 if (token == null) {
                     android.util.Log.e("HomeVM", "Failed to get JWT token")
                     return@launch
                 }
-
-                android.util.Log.d("HomeVM", "Starting session with token: ${token.substring(0, minOf(20, token.length))}...")
-                android.util.Log.d("HomeVM", "Session ID: $sessionId")
-                android.util.Log.d("HomeVM", "Start time: $startTime")
 
                 val sessionResponse = navigationRepository.startSession(
                     sessionId = sessionId,
@@ -274,13 +257,7 @@ class HomeViewModel @Inject constructor(
 
                 if (sessionResponse != null) {
                     _uiState.update { it.copy(sessionId = sessionId, serviceToken = token) }
-
-                    // Start SSE connection to receive risk updates
-                    android.util.Log.d("HomeVM", "Session started, connecting to risk stream...")
                     connectToRiskStream(sessionId, token)
-
-                    // Note: Foreground Service will be started from HomeScreen
-                    android.util.Log.d("HomeVM", "Session started, UI should start service")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "Failed to start session", e)
@@ -437,7 +414,8 @@ class HomeViewModel @Inject constructor(
                 serviceToken = null,
                 riskMessage = null,
                 riskUrgency = null,
-                riskUpdateCount = 0  // 🚨 RESET COUNTER
+                riskUpdateCount = 0,
+                dynamicRiskPoints = emptyList()
             )
         }
     }
@@ -446,43 +424,22 @@ class HomeViewModel @Inject constructor(
      * Connect to SSE stream to receive real-time risk updates every 30 seconds
      */
     private fun connectToRiskStream(sessionId: String, token: String) {
-        // 🚨 CRITICAL: Prevent duplicate connections
         if (sseJob?.isActive == true) {
-            android.util.Log.e("HomeVM SSE", "!!! SSE ALREADY ACTIVE - CANCELLING OLD CONNECTION !!!")
             sseJob?.cancel()
         }
 
-        android.util.Log.w("HomeVM SSE", "=== Starting NEW SSE connection for session: $sessionId ===")
-        android.util.Log.d("HomeVM SSE", "Current time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
-
         sseJob = viewModelScope.launch {
             var retryCount = 0
-            val maxRetries = 999  // 거의 무한 재시도
-            var lastMessageTime = System.currentTimeMillis()
+            val maxRetries = 10
 
             while (retryCount < maxRetries && _uiState.value.isSimulating) {
                 try {
-                    android.util.Log.w("HomeVM SSE", ">>> Connecting to risk stream (attempt ${retryCount + 1}/$maxRetries)")
-
                     navigationRepository.connectRiskStream(sessionId, token)
                         .collect { riskUpdate ->
-                            val now = System.currentTimeMillis()
-                            val timeSinceLastMessage = (now - lastMessageTime) / 1000.0
-                            lastMessageTime = now
+                            retryCount = 0
 
-                            android.util.Log.w("HomeVM SSE", "!!! RISK UPDATE RECEIVED !!! (${timeSinceLastMessage}s since last)")
-                            android.util.Log.w("HomeVM SSE", ">>> Message: ${riskUpdate.summary?.message}")
-                            android.util.Log.w("HomeVM SSE", ">>> Urgency: ${riskUpdate.summary?.urgency}")
-                            android.util.Log.w("HomeVM SSE", ">>> Level: ${riskUpdate.summary?.level}")
-                            android.util.Log.w("HomeVM SSE", ">>> isSimulating: ${_uiState.value.isSimulating}")
-
-                            retryCount = 0  // 성공 시 재시도 카운트 리셋
-
-                            // Check if this is a session-ended event
+                            // Check if session ended
                             if (riskUpdate.summary?.level == "End") {
-                                android.util.Log.w("HomeVM SSE", "!!! Session ended - stopping simulation")
-
-                                // Update UI with destination reached message
                                 _uiState.update {
                                     it.copy(
                                         riskMessage = riskUpdate.summary?.message,
@@ -491,72 +448,46 @@ class HomeViewModel @Inject constructor(
                                         sessionId = null
                                     )
                                 }
-
-                                // Stop simulation
                                 simulationJob?.cancel()
-
-                                // Stop SSE session on server
                                 navigationRepository.stopSession(sessionId, token)
-
-                                // Cancel this SSE job by throwing CancellationException
-                                throw kotlinx.coroutines.CancellationException("Session ended normally")
-                            } else {
-                                // Normal risk update during active navigation
-                                val currentlySimulating = _uiState.value.isSimulating
-                                android.util.Log.w("HomeVM SSE", ">>> Checking if should update UI: isSimulating=$currentlySimulating")
-
-                                if (currentlySimulating) {
-                                    _uiState.update {
-                                        it.copy(
-                                            riskMessage = riskUpdate.summary?.message,
-                                            riskUrgency = riskUpdate.summary?.urgency,
-                                            riskUpdateCount = it.riskUpdateCount + 1  // 🚨 INCREMENT COUNTER
-                                        )
-                                    }
-                                    android.util.Log.w("HomeVM SSE", "!!! UI STATE UPDATED WITH RISK MESSAGE (count=${_uiState.value.riskUpdateCount}) !!!")
-                                } else {
-                                    android.util.Log.e("HomeVM SSE", "XXX SIMULATION NOT RUNNING - IGNORING MESSAGE XXX")
+                                throw kotlinx.coroutines.CancellationException("Session ended")
+                            } else if (_uiState.value.isSimulating) {
+                                // Update UI with new risk data
+                                _uiState.update {
+                                    it.copy(
+                                        riskMessage = riskUpdate.summary?.message,
+                                        riskUrgency = riskUpdate.summary?.urgency,
+                                        riskUpdateCount = it.riskUpdateCount + 1,
+                                        dynamicRiskPoints = riskUpdate.riskPoints
+                                    )
                                 }
                             }
                         }
 
-                    // Flow ended normally (server closed connection)
-                    android.util.Log.w("HomeVM SSE", "Stream ended normally - will retry if still simulating")
-
-                    // 정상 종료여도 시뮬레이션 중이면 재연결
+                    // Stream ended, retry if still simulating
                     if (_uiState.value.isSimulating) {
                         retryCount++
-                        android.util.Log.w("HomeVM SSE", "Reconnecting after normal close...")
                         delay(2000L)
-                        continue
                     } else {
                         break
                     }
-
                 } catch (e: kotlinx.coroutines.CancellationException) {
-                    // Coroutine was cancelled (expected when stopping)
-                    android.util.Log.d("HomeVM SSE", "SSE job cancelled")
-                    throw e  // Re-throw to properly propagate cancellation
+                    throw e
                 } catch (e: Exception) {
-                    android.util.Log.e("HomeVM SSE", "!!! CONNECTION ERROR (attempt ${retryCount + 1}/$maxRetries) !!!", e)
+                    android.util.Log.e("HomeVM SSE", "Connection error: ${e.message}")
                     retryCount++
-
                     if (retryCount < maxRetries && _uiState.value.isSimulating) {
-                        val delaySeconds = minOf(retryCount * 2L, 10L)  // 최대 10초
-                        android.util.Log.w("HomeVM SSE", "Retrying in ${delaySeconds} seconds...")
-                        delay(delaySeconds * 1000L)
-                    } else if (!_uiState.value.isSimulating) {
-                        android.util.Log.d("HomeVM SSE", "Simulation stopped, not retrying")
+                        delay(minOf(retryCount * 2L, 10L) * 1000L)
+                    } else {
                         break
                     }
                 }
             }
 
             if (retryCount >= maxRetries) {
-                android.util.Log.e("HomeVM SSE", "!!! MAX RETRIES REACHED - GIVING UP !!!")
                 _uiState.update {
                     it.copy(
-                        riskMessage = "Connection lost - Restart navigation",
+                        riskMessage = "Connection lost",
                         riskUrgency = "high"
                     )
                 }
