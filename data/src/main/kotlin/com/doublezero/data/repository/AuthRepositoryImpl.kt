@@ -9,10 +9,14 @@ import com.doublezero.data.network.AuthApi
 import com.doublezero.data.network.GoogleLoginRequest
 import com.doublezero.data.network.AuthResponse
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -24,6 +28,8 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : AuthRepository {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val sharedPreferences: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(context)
@@ -59,6 +65,26 @@ class AuthRepositoryImpl @Inject constructor(
         val savedToken = sharedPreferences.getString("access_token", null)
         if (savedToken != null) {
             _userProfile.value = UserProfile(name = "Saved User", photoUrl = "")
+        } else {
+            // DEV: Auto-fetch token if none exists
+            android.util.Log.d("AuthRepositoryImpl", "init: No token found, auto-fetching test token...")
+            scope.launch {
+                try {
+                    val resp = authApi.getTestToken(null, "dev@example.com")
+                    if (resp.isSuccessful) {
+                        val body = resp.body()
+                        body?.let {
+                            sharedPreferences.edit().putString("access_token", it.accessToken).apply()
+                            _userProfile.value = UserProfile(name = "Dev User (Auto)", photoUrl = "")
+                            android.util.Log.d("AuthRepositoryImpl", "init: Auto-token stored successfully")
+                        }
+                    } else {
+                        android.util.Log.e("AuthRepositoryImpl", "init: Auto-token failed - ${resp.code()}")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("AuthRepositoryImpl", "init: Auto-token exception", e)
+                }
+            }
         }
     }
 
