@@ -47,8 +47,10 @@ class HomeViewModel @Inject constructor(
         val simStepIndex: Int = -1,
         // SSE Session State
         val sessionId: String? = null,
+        val serviceToken: String? = null,
         val riskMessage: String? = null,
-        val riskUrgency: String? = null
+        val riskUrgency: String? = null,
+        val riskUpdateCount: Int = 0
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -210,10 +212,17 @@ class HomeViewModel @Inject constructor(
 
         // Start SSE session first
         val sessionId = java.util.UUID.randomUUID().toString()
-        // Use SimpleDateFormat for API level 24+ compatibility
+
+        // CRITICAL: Generate startTime at the exact moment of session creation
+        val currentTimeMillis = System.currentTimeMillis()
         val startTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }.format(java.util.Date()) // CRITICAL: Use current time!
+        }.format(java.util.Date(currentTimeMillis))
+
+        // DEBUG: Log system time to verify
+        android.util.Log.d("HomeVM", "System time (ms): $currentTimeMillis")
+        android.util.Log.d("HomeVM", "Formatted startTime: $startTime")
+        android.util.Log.d("HomeVM", "Expected current time: ${java.util.Date(currentTimeMillis)}")
 
         viewModelScope.launch {
             try {
@@ -237,10 +246,14 @@ class HomeViewModel @Inject constructor(
                 )
 
                 if (sessionResponse != null) {
-                    _uiState.update { it.copy(sessionId = sessionId) }
+                    _uiState.update { it.copy(sessionId = sessionId, serviceToken = token) }
 
-                    // Connect to SSE stream
+                    // Start SSE connection to receive risk updates
+                    android.util.Log.d("HomeVM", "Session started, connecting to risk stream...")
                     connectToRiskStream(sessionId, token)
+
+                    // Note: Foreground Service will be started from HomeScreen
+                    android.util.Log.d("HomeVM", "Session started, UI should start service")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "Failed to start session", e)
@@ -394,8 +407,10 @@ class HomeViewModel @Inject constructor(
                 simPosition = null,
                 simStepIndex = -1,
                 sessionId = null,
+                serviceToken = null,
                 riskMessage = null,
-                riskUrgency = null
+                riskUrgency = null,
+                riskUpdateCount = 0  // 🚨 RESET COUNTER
             )
         }
     }
@@ -404,90 +419,117 @@ class HomeViewModel @Inject constructor(
      * Connect to SSE stream to receive real-time risk updates every 30 seconds
      */
     private fun connectToRiskStream(sessionId: String, token: String) {
-        sseJob?.cancel()
+        // 🚨 CRITICAL: Prevent duplicate connections
+        if (sseJob?.isActive == true) {
+            android.util.Log.e("HomeVM SSE", "!!! SSE ALREADY ACTIVE - CANCELLING OLD CONNECTION !!!")
+            sseJob?.cancel()
+        }
 
-        android.util.Log.d("HomeVM SSE", "Starting SSE connection for session: $sessionId")
+        android.util.Log.w("HomeVM SSE", "=== Starting NEW SSE connection for session: $sessionId ===")
+        android.util.Log.d("HomeVM SSE", "Current time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())}")
 
         sseJob = viewModelScope.launch {
             var retryCount = 0
-            val maxRetries = 10  // 재시도 횟수 증가 (5 → 10)
+            val maxRetries = 999  // 거의 무한 재시도
+            var lastMessageTime = System.currentTimeMillis()
 
             while (retryCount < maxRetries && _uiState.value.isSimulating) {
                 try {
-                    android.util.Log.d("HomeVM SSE", "Connecting to risk stream (attempt ${retryCount + 1}/$maxRetries)")
+                    android.util.Log.w("HomeVM SSE", ">>> Connecting to risk stream (attempt ${retryCount + 1}/$maxRetries)")
 
-                    var shouldStop = false
                     navigationRepository.connectRiskStream(sessionId, token)
                         .collect { riskUpdate ->
-                            android.util.Log.d("HomeVM SSE", "Risk update received!")
-                            android.util.Log.d("HomeVM SSE", "Message: ${riskUpdate.summary?.message}")
-                            android.util.Log.d("HomeVM SSE", "Urgency: ${riskUpdate.summary?.urgency}")
-                            android.util.Log.d("HomeVM SSE", "Risk level: ${riskUpdate.summary?.level}")
+                            val now = System.currentTimeMillis()
+                            val timeSinceLastMessage = (now - lastMessageTime) / 1000.0
+                            lastMessageTime = now
+
+                            android.util.Log.w("HomeVM SSE", "!!! RISK UPDATE RECEIVED !!! (${timeSinceLastMessage}s since last)")
+                            android.util.Log.w("HomeVM SSE", ">>> Message: ${riskUpdate.summary?.message}")
+                            android.util.Log.w("HomeVM SSE", ">>> Urgency: ${riskUpdate.summary?.urgency}")
+                            android.util.Log.w("HomeVM SSE", ">>> Level: ${riskUpdate.summary?.level}")
+                            android.util.Log.w("HomeVM SSE", ">>> isSimulating: ${_uiState.value.isSimulating}")
 
                             retryCount = 0  // 성공 시 재시도 카운트 리셋
 
                             // Check if this is a session-ended event
                             if (riskUpdate.summary?.level == "End") {
-                                android.util.Log.d("HomeVM SSE", "Session ended - stopping simulation and SSE")
+                                android.util.Log.w("HomeVM SSE", "!!! Session ended - stopping simulation")
 
                                 // Update UI with destination reached message
                                 _uiState.update {
                                     it.copy(
                                         riskMessage = riskUpdate.summary?.message,
                                         riskUrgency = "low",
-                                        isSimulating = false  // Stop simulation
+                                        isSimulating = false,
+                                        sessionId = null
                                     )
                                 }
 
-                                // Stop simulation and close SSE connection completely
+                                // Stop simulation
                                 simulationJob?.cancel()
-                                sseJob?.cancel()
 
                                 // Stop SSE session on server
-                                val token: String? = authRepository.getAccessToken()
-                                if (token != null) {
-                                    navigationRepository.stopSession(sessionId, token)
-                                }
+                                navigationRepository.stopSession(sessionId, token)
 
-                                shouldStop = true  // Signal to break out of collect loop
-                                return@collect  // Exit the flow collection immediately
+                                // Cancel this SSE job by throwing CancellationException
+                                throw kotlinx.coroutines.CancellationException("Session ended normally")
                             } else {
-                                // Update UI state with risk message (only during active navigation)
-                                if (_uiState.value.isSimulating) {
+                                // Normal risk update during active navigation
+                                val currentlySimulating = _uiState.value.isSimulating
+                                android.util.Log.w("HomeVM SSE", ">>> Checking if should update UI: isSimulating=$currentlySimulating")
+
+                                if (currentlySimulating) {
                                     _uiState.update {
                                         it.copy(
                                             riskMessage = riskUpdate.summary?.message,
-                                            riskUrgency = riskUpdate.summary?.urgency
+                                            riskUrgency = riskUpdate.summary?.urgency,
+                                            riskUpdateCount = it.riskUpdateCount + 1  // 🚨 INCREMENT COUNTER
                                         )
                                     }
-                                    android.util.Log.d("HomeVM SSE", "UI state updated with risk message")
+                                    android.util.Log.w("HomeVM SSE", "!!! UI STATE UPDATED WITH RISK MESSAGE (count=${_uiState.value.riskUpdateCount}) !!!")
+                                } else {
+                                    android.util.Log.e("HomeVM SSE", "XXX SIMULATION NOT RUNNING - IGNORING MESSAGE XXX")
                                 }
                             }
                         }
 
-                    // Flow가 정상 종료된 경우 (session-ended)
-                    android.util.Log.d("HomeVM SSE", "Stream ended normally")
-                    // Exit retry loop
-                    break
+                    // Flow ended normally (server closed connection)
+                    android.util.Log.w("HomeVM SSE", "Stream ended normally - will retry if still simulating")
 
+                    // 정상 종료여도 시뮬레이션 중이면 재연결
+                    if (_uiState.value.isSimulating) {
+                        retryCount++
+                        android.util.Log.w("HomeVM SSE", "Reconnecting after normal close...")
+                        delay(2000L)
+                        continue
+                    } else {
+                        break
+                    }
+
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Coroutine was cancelled (expected when stopping)
+                    android.util.Log.d("HomeVM SSE", "SSE job cancelled")
+                    throw e  // Re-throw to properly propagate cancellation
                 } catch (e: Exception) {
-                    android.util.Log.e("HomeVM SSE", "Connection error (attempt ${retryCount + 1}/$maxRetries)", e)
+                    android.util.Log.e("HomeVM SSE", "!!! CONNECTION ERROR (attempt ${retryCount + 1}/$maxRetries) !!!", e)
                     retryCount++
 
                     if (retryCount < maxRetries && _uiState.value.isSimulating) {
-                        // 재연결 대기 시간: 3초 고정 (예측 가능한 동작)
-                        val waitSec = 3
-                        android.util.Log.d("HomeVM SSE", "Retrying in $waitSec seconds...")
-                        delay(waitSec * 1000L)
+                        val delaySeconds = minOf(retryCount * 2L, 10L)  // 최대 10초
+                        android.util.Log.w("HomeVM SSE", "Retrying in ${delaySeconds} seconds...")
+                        delay(delaySeconds * 1000L)
+                    } else if (!_uiState.value.isSimulating) {
+                        android.util.Log.d("HomeVM SSE", "Simulation stopped, not retrying")
+                        break
                     }
                 }
             }
 
             if (retryCount >= maxRetries) {
-                android.util.Log.e("HomeVM SSE", "Max retries ($maxRetries) reached, giving up")
+                android.util.Log.e("HomeVM SSE", "!!! MAX RETRIES REACHED - GIVING UP !!!")
                 _uiState.update {
                     it.copy(
-                        riskMessage = "Connection lost - Check network and restart navigation",
+                        riskMessage = "Connection lost - Restart navigation",
                         riskUrgency = "high"
                     )
                 }

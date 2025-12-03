@@ -143,12 +143,50 @@ fun HomeScreen(
     }
 
     // Show risk alerts from SSE updates
-    LaunchedEffect(state.riskMessage) {
-        state.riskMessage?.let { message ->
+    // 🚨 Watch riskUpdateCount instead of message to trigger on every update (even if message is same)
+    LaunchedEffect(state.riskUpdateCount) {
+        val message = state.riskMessage  // Store in local variable for smart cast
+        if (state.riskUpdateCount > 0 && message != null) {
+            android.util.Log.w("HomeScreen", "!!! SHOWING SNACKBAR: $message (count=${state.riskUpdateCount}) !!!")
             snackbarHostState.showSnackbar(
                 message = message,
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
+        }
+    }
+
+    // Start/stop Foreground Service based on session
+    LaunchedEffect(state.sessionId, state.serviceToken) {
+        val sessionId = state.sessionId
+        val token = state.serviceToken
+
+        if (sessionId != null && token != null) {
+            android.util.Log.d("HomeScreen", "Starting NavigationService for session: $sessionId")
+            try {
+                val serviceIntent = Intent(context, Class.forName("com.doublezero.app.NavigationService")).apply {
+                    action = "ACTION_START"
+                    putExtra("EXTRA_SESSION_ID", sessionId)
+                    putExtra("EXTRA_TOKEN", token)
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeScreen", "Failed to start NavigationService", e)
+            }
+        } else if (sessionId == null) {
+            // Stop service when session ends
+            android.util.Log.d("HomeScreen", "Stopping NavigationService")
+            try {
+                val serviceIntent = Intent(context, Class.forName("com.doublezero.app.NavigationService")).apply {
+                    action = "ACTION_STOP"
+                }
+                context.stopService(serviceIntent)
+            } catch (e: Exception) {
+                android.util.Log.e("HomeScreen", "Failed to stop NavigationService", e)
+            }
         }
     }
 
