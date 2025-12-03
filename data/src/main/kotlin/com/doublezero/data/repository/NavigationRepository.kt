@@ -13,7 +13,9 @@ interface NavigationRepository {
         destLon: Double,
         alternatives: Boolean = false,
         travelMode: String = "DRIVE",
-        token: String? = null
+        token: String? = null,
+        includeRisk: Boolean = false,
+        sampleCount: Int? = null
     ): List<RouteDto>
 
     suspend fun startSession(

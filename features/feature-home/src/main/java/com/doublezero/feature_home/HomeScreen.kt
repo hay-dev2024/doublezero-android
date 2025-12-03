@@ -252,7 +252,8 @@ fun HomeScreen(
             locationPermissionGranted = locationPermissionGranted,
             cameraPositionState = cameraPositionState,
             modifier = Modifier.fillMaxSize(),
-            simulatedPosition = state.simPosition
+            simulatedPosition = state.simPosition,
+            heatmapProviders = state.initialHeatmapProviders
         )
 
         // When routes change, animate camera to fit the selected route (if possible)
@@ -771,7 +772,8 @@ private fun MapScreenRoutes(
     onSelect: (Int) -> Unit = {},
     cameraPositionState: com.google.maps.android.compose.CameraPositionState,
     locationPermissionGranted: Boolean = false,
-    simulatedPosition: LatLng? = null
+    simulatedPosition: LatLng? = null,
+    heatmapProviders: List<com.google.maps.android.heatmaps.HeatmapTileProvider> = emptyList()
 ) {
     val properties = com.google.maps.android.compose.MapProperties(
         isMyLocationEnabled = locationPermissionGranted,
@@ -898,24 +900,21 @@ private fun MapScreenRoutes(
                     )
                 }
 
-                if (isSelected) {
-                    // keep existing tile overlay behavior as fallback or additional layer
-                    val segmentedProviders = remember(path) {
-                        RiskHeatmapUtils.createSegmentedHeatmapProviders(path)
-                    }
-                    segmentedProviders.forEach { (provider, _) ->
-                        TileOverlay(
-                            tileProvider = provider,
-                            transparency = 0.6f,
-                            zIndex = 3f
-                        )
-                    }
-                }
+                // Removed old random-color segmented heatmap - no longer needed
             }
         }
 
         simulatedPosition?.let { sp ->
             Marker(state = rememberUpdatedMarkerState(position = sp), title = "You (sim)")
+        }
+
+        // Display initial heatmap from backend riskPoints (tier별로 분리된 프로바이더들)
+        heatmapProviders.forEachIndexed { index, provider ->
+            TileOverlay(
+                tileProvider = provider,
+                transparency = 0.3f,
+                zIndex = 2.5f + index * 0.1f  // 각 tier별로 약간씩 다른 z-index
+            )
         }
     }
 }

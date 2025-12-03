@@ -46,13 +46,17 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
         destLon: Double,
         alternatives: Boolean,
         travelMode: String,
-        token: String?
+        token: String?,
+        includeRisk: Boolean,
+        sampleCount: Int?
     ): List<RouteDto> {
         val req = RouteRequestDto(
             origin = PlaceInputDto(lat = originLat, lon = originLon),
             destination = PlaceInputDto(lat = destLat, lon = destLon),
             alternatives = alternatives,
-            travelMode = travelMode
+            travelMode = travelMode,
+            includeRisk = if (includeRisk) true else null,
+            sampleCount = sampleCount
         )
 
         return try {

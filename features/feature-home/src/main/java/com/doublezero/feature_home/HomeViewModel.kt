@@ -50,7 +50,10 @@ class HomeViewModel @Inject constructor(
         val serviceToken: String? = null,
         val riskMessage: String? = null,
         val riskUrgency: String? = null,
-        val riskUpdateCount: Int = 0
+        val riskUpdateCount: Int = 0,
+        // Heatmap State (tier별로 분리된 프로바이더 리스트)
+        val initialHeatmapProviders: List<com.google.maps.android.heatmaps.HeatmapTileProvider> = emptyList(),
+        val dynamicRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList()
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -115,14 +118,20 @@ class HomeViewModel @Inject constructor(
     }
 
     fun findRoute() {
+        android.util.Log.d("HomeVM", "🔍 findRoute() called")
         val origin = _uiState.value.selectedOrigin
         val destination = _uiState.value.selectedDestination
 
+        android.util.Log.d("HomeVM", "Origin: $origin")
+        android.util.Log.d("HomeVM", "Destination: $destination")
+
         if (origin == null || destination == null) {
+            android.util.Log.e("HomeVM", "❌ Origin or destination is null")
             _uiState.update { it.copy(error = "Origin and destination must be selected.") }
             return
         }
 
+        android.util.Log.d("HomeVM", "✅ Starting route search...")
         viewModelScope.launch {
             try {
                 // Use NavigationRepository.getRoute which returns a List<RouteDto>
@@ -133,16 +142,32 @@ class HomeViewModel @Inject constructor(
                     destLon = destination.lon,
                     alternatives = true,
                     travelMode = "DRIVE",
-                    token = null
+                    token = null,
+                    includeRisk = true,  // Request risk data from backend
+                    sampleCount = 10     // Request 10 sample points for better heatmap
                 )
 
+                android.util.Log.d("HomeVM", "✅ Route received: ${result.size} routes")
+
+                // Create initial heatmap from first route's riskPoints (tier별로 분리)
+                val initialHeatmaps = if (result.isNotEmpty() && result[0].riskPoints != null) {
+                    android.util.Log.d("HomeVM", "📍 Creating heatmap from ${result[0].riskPoints!!.size} risk points")
+                    RiskHeatmapUtils.createHeatmapFromRiskPoints(result[0].riskPoints!!)
+                } else {
+                    android.util.Log.w("HomeVM", "⚠️ No risk points available for heatmap")
+                    emptyList()
+                }
+
+                android.util.Log.d("HomeVM", "✅ Updating UI state with routes and ${initialHeatmaps.size} heatmap providers")
                 _uiState.update {
                     it.copy(
                         routes = result,
-                        selectedRouteIndex = if (result.isNotEmpty()) 0 else -1
+                        selectedRouteIndex = if (result.isNotEmpty()) 0 else -1,
+                        initialHeatmapProviders = initialHeatmaps
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "❌ Failed to find route: ${e.message}", e)
                 _uiState.update { it.copy(error = "Failed to find route: ${e.message}") }
             }
         }
@@ -185,7 +210,9 @@ class HomeViewModel @Inject constructor(
                 simStepIndex = -1,
                 sessionId = null,
                 riskMessage = null,
-                riskUrgency = null
+                riskUrgency = null,
+                initialHeatmapProviders = emptyList(),
+                dynamicRiskPoints = emptyList()
             )
         }
     }

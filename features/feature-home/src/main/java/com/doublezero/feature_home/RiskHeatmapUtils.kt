@@ -102,6 +102,58 @@ object RiskHeatmapUtils {
     }
 
     /**
+     * 백엔드에서 받은 riskPoints 데이터로 tier별 히트맵 프로바이더 리스트 생성
+     * 각 tier(0,1,2)마다 별도의 단일 색상 원형 히트맵 생성
+     * @param riskPoints 백엔드의 RiskPointDto 리스트
+     * @return List<HeatmapTileProvider> - tier별로 분리된 프로바이더 리스트
+     */
+    fun createHeatmapFromRiskPoints(
+        riskPoints: List<com.doublezero.data.network.RiskPointDto>
+    ): List<HeatmapTileProvider> {
+        if (riskPoints.isEmpty()) return emptyList()
+
+        val providers = mutableListOf<HeatmapTileProvider>()
+
+        // tier별로 그룹화 (0=Low/초록, 1=Medium/노랑, 2=High/빨강)
+        val groupedByTier = riskPoints.groupBy { it.tier }
+
+        groupedByTier.forEach { (tier, points) ->
+            // 해당 tier의 단일 색상 결정
+            val color = when (tier) {
+                2 -> COLOR_DANGER   // 빨강
+                1 -> COLOR_CAUTION  // 노랑
+                else -> COLOR_SAFE  // 초록
+            }
+
+            // 단일 색상 그라데이션 생성 (시작과 끝을 같은 색으로)
+            val gradient = Gradient(
+                intArrayOf(color, color),
+                floatArrayOf(0.2f, 1.0f)
+            )
+
+            val weightedData = points.map { point ->
+                WeightedLatLng(
+                    LatLng(point.lat, point.lon),
+                    1.0  // 동일한 intensity로 원형 표시
+                )
+            }
+
+            if (weightedData.isNotEmpty()) {
+                val provider = HeatmapTileProvider.Builder()
+                    .weightedData(weightedData)
+                    .gradient(gradient)
+                    .radius(40)     // 원형 반지름
+                    .opacity(0.7)   // 투명도
+                    .build()
+
+                providers.add(provider)
+            }
+        }
+
+        return providers
+    }
+
+    /**
      * 선을 점으로 쪼개는 보간 함수 (이전과 동일)
      */
     private fun densifyPolyline(points: List<LatLng>, intervalMeters: Double): List<LatLng> {
