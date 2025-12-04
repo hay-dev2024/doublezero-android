@@ -107,7 +107,7 @@ private fun UserProfileHeader(userProfile: UserProfile) {
             Column {
                 Text(userProfile.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "john.doe@gmail.com",
+                    userProfile.email,
                     fontSize = 14.sp,
                     color = Grey,
                     modifier = Modifier.padding(top = 2.dp)
@@ -167,7 +167,7 @@ private fun MenuButton(
 private fun SignedInMyPageScreenPreview() {
     MaterialTheme {
         SignedInMyPageScreen(
-            userProfile = UserProfile("John Doe", ""),
+            userProfile = UserProfile("John Doe", "john.doe@example.com", ""),
             onLogout = {},
             onNavigateToHistory = {},
             onNavigateToSettings = {}

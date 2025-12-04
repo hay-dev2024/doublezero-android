@@ -2,6 +2,7 @@ package com.doublezero.feature_mypage.uistate
 
 data class UserProfile(
     val name: String = "",
+    val email: String = "",
     val photoUrl: String = ""
 )
 

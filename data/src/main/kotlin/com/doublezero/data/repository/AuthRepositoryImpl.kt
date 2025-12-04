@@ -102,7 +102,7 @@ class AuthRepositoryImpl @Inject constructor(
                     val body = resp.body()
                     body?.let {
                         sharedPreferences.edit().putString("access_token", it.accessToken).apply()
-                        _userProfile.value = UserProfile(name = "Dev User", photoUrl = "")
+                        _userProfile.value = UserProfile(name = "Dev User", email = "dev@example.com", photoUrl = "")
                         android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: DEV_TEST token stored")
                         return
                     }
@@ -125,14 +125,21 @@ class AuthRepositoryImpl @Inject constructor(
                         .apply()
 
                     // 백엔드에서 받은 실제 사용자 정보 사용
-                    val userName = it.user.displayName?.takeIf { name -> name.isNotBlank() && name != "test-user" }
-                        ?: it.user.email
+                    // displayName이 "test-user"이거나 비어있으면 이메일의 로컬 부분 사용
+                    val userEmail = it.user.email ?: ""
+                    val displayName = it.user.displayName ?: ""
+                    val userName = if (displayName.isNotBlank() && displayName != "test-user") {
+                        displayName
+                    } else {
+                        userEmail.substringBefore("@")
+                    }
 
                     _userProfile.value = UserProfile(
                         name = userName,
+                        email = userEmail,
                         photoUrl = "https://lh3.googleusercontent.com/a/default-user"
                     )
-                    android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: userProfile updated (name=$userName, email=${it.user.email})")
+                    android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: userProfile updated (name=$userName, email=$userEmail)")
                     return
                 }
             }
@@ -148,6 +155,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             _userProfile.value = UserProfile(
                 name = "Google User",
+                email = "user@example.com",
                 photoUrl = "https://lh3.googleusercontent.com/a/default-user"
             )
             android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: fallback mock userProfile set")

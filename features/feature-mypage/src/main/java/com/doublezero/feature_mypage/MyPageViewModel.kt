@@ -30,6 +30,7 @@ class MyPageViewModel @Inject constructor(
             userProfile = if (isLoggedIn) {
                 UserProfile(
                     name = profile.name,
+                    email = profile.email,
                     photoUrl = profile.photoUrl
                 )
             } else {
