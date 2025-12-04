@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -43,11 +42,6 @@ fun MyPageScreen(
     // Log state changes
     LaunchedEffect(uiState.isLoggedIn) {
         android.util.Log.d(TAG, "LaunchedEffect: isLoggedIn=${uiState.isLoggedIn}")
-        if (uiState.isLoggedIn) {
-            Toast.makeText(context, "Login state: SIGNED IN", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "Login state: SIGNED OUT", Toast.LENGTH_SHORT).show()
-        }
     }
 
     // Try silentSignIn on screen enter to restore cached credentials without user interaction
@@ -97,11 +91,11 @@ fun MyPageScreen(
                 if (!idToken.isNullOrEmpty()) {
                     viewModel.onGoogleLoginSuccess(idToken)
                 } else {
-                    Toast.makeText(context, "Failed to get idToken. Check WEB_CLIENT_ID config.", Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Failed to get idToken. Check WEB_CLIENT_ID config.")
                 }
             } catch (e: ApiException) {
                 Log.e(TAG, "googleSignInLauncher: ApiException", e)
-                Toast.makeText(context, "Google Sign-In failed: ${e.statusCode}", Toast.LENGTH_LONG).show()
+                showSignInFailed.value = true
             }
         } else {
             Log.d(TAG, "googleSignInLauncher: non-OK resultCode=${result.resultCode}")
@@ -132,12 +126,6 @@ fun MyPageScreen(
                     }
                 }
             }
-            // Show user-facing message when sign-in is cancelled or fails to return a token
-            Toast.makeText(
-                context,
-                "Google Sign-In was cancelled or failed. Ensure your AVD has Google Play and an account, or use Dev login.",
-                Toast.LENGTH_LONG
-            ).show()
 
             // Attempt silentSignIn as a fallback (may succeed if credentials are cached)
             try {
@@ -179,7 +167,7 @@ fun MyPageScreen(
             val playStatus = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
             Log.d(TAG, "onLoginClick: GooglePlayServices status=$playStatus (ConnectionResult.SUCCESS=${ConnectionResult.SUCCESS})")
             if (playStatus != ConnectionResult.SUCCESS) {
-                Toast.makeText(context, "Google Play Services not available on this device/AVD. Dev login available.", Toast.LENGTH_LONG).show()
+                Log.e(TAG, "Google Play Services not available on this device/AVD")
                 return@remember
             }
 

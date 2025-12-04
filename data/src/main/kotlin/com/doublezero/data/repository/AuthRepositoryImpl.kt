@@ -124,11 +124,15 @@ class AuthRepositoryImpl @Inject constructor(
                         .putString("access_token", it.accessToken)
                         .apply()
 
+                    // 백엔드에서 받은 실제 사용자 정보 사용
+                    val userName = it.user.displayName?.takeIf { name -> name.isNotBlank() && name != "test-user" }
+                        ?: it.user.email
+
                     _userProfile.value = UserProfile(
-                        name = it.user.displayName ?: it.user.email,
+                        name = userName,
                         photoUrl = "https://lh3.googleusercontent.com/a/default-user"
                     )
-                    android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: userProfile updated")
+                    android.util.Log.d("AuthRepositoryImpl", "loginWithGoogle: userProfile updated (name=$userName, email=${it.user.email})")
                     return
                 }
             }
