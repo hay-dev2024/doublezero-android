@@ -105,17 +105,42 @@ object RiskHeatmapUtils {
      * 백엔드에서 받은 riskPoints 데이터로 tier별 히트맵 프로바이더 리스트 생성
      * 각 tier(0,1,2)마다 별도의 단일 색상 원형 히트맵 생성
      * @param riskPoints 백엔드의 RiskPointDto 리스트
+     * @param isDynamic 동적 업데이트 여부 (30초 주기 SSE 데이터)
      * @return List<HeatmapTileProvider> - tier별로 분리된 프로바이더 리스트
      */
     fun createHeatmapFromRiskPoints(
-        riskPoints: List<com.doublezero.data.network.RiskPointDto>
+        riskPoints: List<com.doublezero.data.network.RiskPointDto>,
+        isDynamic: Boolean = false
     ): List<HeatmapTileProvider> {
         if (riskPoints.isEmpty()) return emptyList()
+
+        // 🔍 중복 제거 강화: 50m 반경 이내의 같은 tier 점들은 하나만 유지
+        val uniquePoints = mutableListOf<com.doublezero.data.network.RiskPointDto>()
+
+        riskPoints.forEach { point ->
+            val isDuplicate = uniquePoints.any { existing ->
+                val distance = SphericalUtil.computeDistanceBetween(
+                    LatLng(existing.lat, existing.lon),
+                    LatLng(point.lat, point.lon)
+                )
+                // 50m 이내 + 같은 tier면 중복으로 간주
+                distance < 50.0 && existing.tier == point.tier
+            }
+
+            if (!isDuplicate) {
+                uniquePoints.add(point)
+            }
+        }
+
+        android.util.Log.d(
+            "RiskHeatmapUtils",
+            "createHeatmapFromRiskPoints: ${riskPoints.size} points → ${uniquePoints.size} unique after 50m dedup (isDynamic=$isDynamic)"
+        )
 
         val providers = mutableListOf<HeatmapTileProvider>()
 
         // tier별로 그룹화 (0=Low/초록, 1=Medium/노랑, 2=High/빨강)
-        val groupedByTier = riskPoints.groupBy { it.tier }
+        val groupedByTier = uniquePoints.groupBy { it.tier }
 
         groupedByTier.forEach { (tier, points) ->
             // 해당 tier의 단일 색상 결정
@@ -139,14 +164,23 @@ object RiskHeatmapUtils {
             }
 
             if (weightedData.isNotEmpty()) {
+                // 🎨 동적 히트맵과 초기 히트맵의 크기/투명도 차별화
+                val radius = if (isDynamic) 30 else 25  // 동적은 조금 더 크게
+                val opacity = if (isDynamic) 0.7 else 0.5  // 동적은 더 진하게
+
                 val provider = HeatmapTileProvider.Builder()
                     .weightedData(weightedData)
                     .gradient(gradient)
-                    .radius(40)     // 원형 반지름
-                    .opacity(0.7)   // 투명도
+                    .radius(radius)
+                    .opacity(opacity)
                     .build()
 
                 providers.add(provider)
+
+                android.util.Log.d(
+                    "RiskHeatmapUtils",
+                    "Created provider for tier=$tier with ${weightedData.size} points (radius=$radius, opacity=$opacity, isDynamic=$isDynamic)"
+                )
             }
         }
 

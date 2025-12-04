@@ -451,14 +451,22 @@ class HomeViewModel @Inject constructor(
                                 simulationJob?.cancel()
                                 navigationRepository.stopSession(sessionId, token)
                                 throw kotlinx.coroutines.CancellationException("Session ended")
-                            } else if (_uiState.value.isSimulating) {
-                                // Update UI with new risk data
+                            } else {
+                                // 🚨 FIX: isSimulating 체크 제거 - 세션이 활성화되어 있으면 항상 히트맵 업데이트
+                                // (시뮬레이션 속도가 빨라서 isSimulating이 false가 되어도 SSE는 계속 받아야 함)
+                                val newPoints = riskUpdate.riskPoints
+
+                                android.util.Log.w(
+                                    "HomeVM SSE",
+                                    "🔄 REPLACING dynamic heatmap: ${newPoints.size} NEW points (isSimulating=${_uiState.value.isSimulating})"
+                                )
+
                                 _uiState.update {
                                     it.copy(
                                         riskMessage = riskUpdate.summary?.message,
                                         riskUrgency = riskUpdate.summary?.urgency,
                                         riskUpdateCount = it.riskUpdateCount + 1,
-                                        dynamicRiskPoints = riskUpdate.riskPoints
+                                        dynamicRiskPoints = newPoints  // ✅ 항상 업데이트
                                     )
                                 }
                             }

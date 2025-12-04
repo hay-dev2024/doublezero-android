@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.key
 
 // New imports for Maps and permissions
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -246,27 +247,11 @@ fun HomeScreen(
         var showStepsSheet by remember { mutableStateOf(false) }
 
         // Always show the Map (so tiles load even if user hasn't granted location permission).
-        val initialProviders = remember(state.initialRiskPoints, state.dynamicRiskPoints) {
-            // To avoid overlay stacking/darkening: filter initial risk points that overlap dynamic points
-            val thresholdMeters = 30.0
-            val initial = state.initialRiskPoints ?: emptyList()
-            val dynamic = state.dynamicRiskPoints ?: emptyList()
-
-            val filteredInitial = if (initial.isEmpty() || dynamic.isEmpty()) {
-                initial
-            } else {
-                initial.filter { initPt ->
-                    dynamic.none { dyn ->
-                        val d = SphericalUtil.computeDistanceBetween(
-                            LatLng(initPt.lat, initPt.lon),
-                            LatLng(dyn.lat, dyn.lon)
-                        )
-                        d <= thresholdMeters
-                    }
-                }
-            }
-
-            RiskHeatmapUtils.createHeatmapFromRiskPoints(filteredInitial)
+        // Initial heatmap only depends on initialRiskPoints (not dynamic)
+        val initialProviders = remember(state.initialRiskPoints) {
+            val initial = state.initialRiskPoints
+            android.util.Log.d("HomeScreen", "Creating initial heatmap with ${initial.size} points")
+            RiskHeatmapUtils.createHeatmapFromRiskPoints(initial, isDynamic = false)
         }
 
         MapScreenRoutes(
@@ -934,30 +919,40 @@ private fun MapScreenRoutes(
             Marker(state = rememberUpdatedMarkerState(position = sp), title = "You (sim)")
         }
 
-        // Display initial heatmap from backend riskPoints (tier별로 분리된 프로바이더들)
+        // ✅ 초기 히트맵은 항상 표시 (배경 레이어로 유지)
         heatmapProviders.forEachIndexed { index, provider ->
-            TileOverlay(
-                tileProvider = provider,
-                transparency = 0.3f,
-                zIndex = 2.5f + index * 0.1f  // 각 tier별로 약간씩 다른 z-index
-            )
+            key("initial_static_$index") {
+                TileOverlay(
+                    tileProvider = provider,
+                    transparency = 0.3f,
+                    zIndex = 2.5f + index * 0.1f
+                )
+            }
         }
 
-        // 🚨 Display dynamic heatmap from SSE (30초 주기 업데이트)
+        // 🚨 동적 히트맵: 30초마다 갱신 (State 변경 시 Compose가 자동으로 이전 레이어 제거 후 재생성)
         if (dynamicRiskPoints.isNotEmpty()) {
-            android.util.Log.d("MapScreenRoutes", "Rendering dynamic heatmap with ${dynamicRiskPoints.size} points")
+            // ✅ 모든 점의 좌표를 해싱해서 완전히 고유한 key 생성
+            val allCoords = dynamicRiskPoints.joinToString("_") { "${it.lat.hashCode()}_${it.lon.hashCode()}_${it.tier}" }
+            val dynamicKey = "${dynamicRiskPoints.size}_${allCoords.hashCode()}"
 
-            // RiskHeatmapUtils를 사용하여 동적 히트맵 프로바이더 생성
-            val dynamicProviders = remember(dynamicRiskPoints) {
-                RiskHeatmapUtils.createHeatmapFromRiskPoints(dynamicRiskPoints)
+            android.util.Log.w("MapScreenRoutes", "🔄 RENDERING dynamic heatmap: ${dynamicRiskPoints.size} points (key=$dynamicKey)")
+
+            // ✅ 강제로 새 프로바이더 생성 (key가 바뀌면 무조건 재생성)
+            val dynamicProviders = remember(dynamicKey) {
+                android.util.Log.w("MapScreenRoutes", "✅ remember() EXECUTED: creating NEW providers for key=$dynamicKey")
+                RiskHeatmapUtils.createHeatmapFromRiskPoints(dynamicRiskPoints, isDynamic = true)
             }
 
             dynamicProviders.forEachIndexed { index, provider ->
-                TileOverlay(
-                    tileProvider = provider,
-                    transparency = 0.2f,  // 약간 더 투명하게 (동적 강조)
-                    zIndex = 3.0f + index * 0.1f  // 초기 히트맵 위에 렌더링
-                )
+                key("dynamic_${dynamicKey}_$index") {
+                    android.util.Log.w("MapScreenRoutes", "✅ COMPOSING TileOverlay tier$index")
+                    TileOverlay(
+                        tileProvider = provider,
+                        transparency = 0.3f,
+                        zIndex = 3.5f + index * 0.1f
+                    )
+                }
             }
         }
     }
