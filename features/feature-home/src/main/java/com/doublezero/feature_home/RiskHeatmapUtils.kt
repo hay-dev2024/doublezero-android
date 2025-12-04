@@ -114,27 +114,16 @@ object RiskHeatmapUtils {
     ): List<HeatmapTileProvider> {
         if (riskPoints.isEmpty()) return emptyList()
 
-        // 🔍 중복 제거 강화: 50m 반경 이내의 같은 tier 점들은 하나만 유지
-        val uniquePoints = mutableListOf<com.doublezero.data.network.RiskPointDto>()
-
-        riskPoints.forEach { point ->
-            val isDuplicate = uniquePoints.any { existing ->
-                val distance = SphericalUtil.computeDistanceBetween(
-                    LatLng(existing.lat, existing.lon),
-                    LatLng(point.lat, point.lon)
-                )
-                // 50m 이내 + 같은 tier면 중복으로 간주
-                distance < 50.0 && existing.tier == point.tier
-            }
-
-            if (!isDuplicate) {
-                uniquePoints.add(point)
-            }
+        // 🔍 중복 제거: 동일 좌표(0.0001도 이내)는 하나만 유지
+        val uniquePoints = riskPoints.distinctBy { point ->
+            val latKey = (point.lat * 10000).toInt()
+            val lonKey = (point.lon * 10000).toInt()
+            "$latKey,$lonKey,${point.tier}"
         }
 
         android.util.Log.d(
             "RiskHeatmapUtils",
-            "createHeatmapFromRiskPoints: ${riskPoints.size} points → ${uniquePoints.size} unique after 50m dedup (isDynamic=$isDynamic)"
+            "createHeatmapFromRiskPoints: ${riskPoints.size} points → ${uniquePoints.size} unique (isDynamic=$isDynamic)"
         )
 
         val providers = mutableListOf<HeatmapTileProvider>()
@@ -164,9 +153,9 @@ object RiskHeatmapUtils {
             }
 
             if (weightedData.isNotEmpty()) {
-                // 🎨 동적 히트맵과 초기 히트맵의 크기/투명도 차별화
-                val radius = if (isDynamic) 30 else 25  // 동적은 조금 더 크게
-                val opacity = if (isDynamic) 0.7 else 0.5  // 동적은 더 진하게
+                // 🎨 동적 히트맵은 약간 작고 투명하게 (겹침 방지)
+                val radius = if (isDynamic) 35 else 40
+                val opacity = if (isDynamic) 0.5 else 0.6
 
                 val provider = HeatmapTileProvider.Builder()
                     .weightedData(weightedData)
@@ -176,11 +165,6 @@ object RiskHeatmapUtils {
                     .build()
 
                 providers.add(provider)
-
-                android.util.Log.d(
-                    "RiskHeatmapUtils",
-                    "Created provider for tier=$tier with ${weightedData.size} points (radius=$radius, opacity=$opacity, isDynamic=$isDynamic)"
-                )
             }
         }
 

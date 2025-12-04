@@ -931,25 +931,24 @@ private fun MapScreenRoutes(
         }
 
         // 🚨 동적 히트맵: 30초마다 갱신 (State 변경 시 Compose가 자동으로 이전 레이어 제거 후 재생성)
+        // ✅ dynamicRiskPoints의 size + 첫 번째 좌표의 hashCode를 key로 사용 → 강제 재생성
         if (dynamicRiskPoints.isNotEmpty()) {
-            // ✅ 모든 점의 좌표를 해싱해서 완전히 고유한 key 생성
-            val allCoords = dynamicRiskPoints.joinToString("_") { "${it.lat.hashCode()}_${it.lon.hashCode()}_${it.tier}" }
-            val dynamicKey = "${dynamicRiskPoints.size}_${allCoords.hashCode()}"
-
+            // ✅ 더 강력한 key: size + 첫 번째 점의 좌표 + 마지막 점의 좌표
+            val dynamicKey = "${dynamicRiskPoints.size}_${dynamicRiskPoints.firstOrNull()?.let { "${it.lat}_${it.lon}" }}_${dynamicRiskPoints.lastOrNull()?.let { "${it.lat}_${it.lon}" }}"
             android.util.Log.w("MapScreenRoutes", "🔄 RENDERING dynamic heatmap: ${dynamicRiskPoints.size} points (key=$dynamicKey)")
 
-            // ✅ 강제로 새 프로바이더 생성 (key가 바뀌면 무조건 재생성)
+            // ✅ remember 키에 명시적으로 동적 key 포함
             val dynamicProviders = remember(dynamicKey) {
                 android.util.Log.w("MapScreenRoutes", "✅ remember() EXECUTED: creating NEW providers for key=$dynamicKey")
                 RiskHeatmapUtils.createHeatmapFromRiskPoints(dynamicRiskPoints, isDynamic = true)
             }
 
             dynamicProviders.forEachIndexed { index, provider ->
-                key("dynamic_${dynamicKey}_$index") {
-                    android.util.Log.w("MapScreenRoutes", "✅ COMPOSING TileOverlay tier$index")
+                key("dynamic_${dynamicKey}_tier${index}") {  // ✅ 고유한 key로 완전히 새로운 TileOverlay 생성
+                    android.util.Log.w("MapScreenRoutes", "✅ COMPOSING TileOverlay tier$index with key=dynamic_${dynamicKey}_tier${index}")
                     TileOverlay(
                         tileProvider = provider,
-                        transparency = 0.3f,
+                        transparency = 0.3f,  // 더 진하게 보이도록 투명도 낮춤
                         zIndex = 3.5f + index * 0.1f
                     )
                 }
