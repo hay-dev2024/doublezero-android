@@ -174,14 +174,18 @@ fun MyPageScreen(
             // Log last signed-in account (if any)
             val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
             Log.d(TAG, "onLoginClick: lastSignedInAccount=$lastAccount")
+
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(BuildConfig.WEB_CLIENT_ID)
                 .requestEmail()
                 .build()
 
             val client = GoogleSignIn.getClient(context, gso)
-            Log.d(TAG, "onLoginClick: launching signInIntent with client=$client")
-            googleSignInLauncher.launch(client.signInIntent)
+            ㄱ
+            client.signOut().addOnCompleteListener {
+                Log.d(TAG, "onLoginClick: signed out, launching signInIntent with client=$client")
+                googleSignInLauncher.launch(client.signInIntent)
+            }
         }
     }
 
