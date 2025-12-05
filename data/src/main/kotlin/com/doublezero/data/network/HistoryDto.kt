@@ -27,7 +27,7 @@ data class CreateHistoryDto(
 )
 
 data class HistoryDto(
-    @SerializedName("id") val id: String,
+    @SerializedName("_id") val id: String,  // MongoDB uses "_id"
     @SerializedName("userId") val userId: String,
     @SerializedName("origin") val origin: LatLonDto,
     @SerializedName("destination") val destination: LatLonDto,

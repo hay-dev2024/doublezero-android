@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +22,6 @@ import com.doublezero.data.model.HistoryItem
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onBackClick: () -> Unit,
@@ -35,52 +32,44 @@ fun HistoryScreen(
 
     // Load history when screen is shown
     LaunchedEffect(Unit) {
+        android.util.Log.d("HistoryScreen", "🔄 Loading history...")
         viewModel.loadHistory(50)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Driving History") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+    // Debug log
+    LaunchedEffect(isLoading, historyList.size) {
+        android.util.Log.d("HistoryScreen", "📊 State: isLoading=$isLoading, items=${historyList.size}")
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BrightWhite)
+    ) {
+        when {
+            isLoading -> {
+                android.util.Log.d("HistoryScreen", "⏳ Showing loading indicator")
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
                 )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BrightWhite)
-                .padding(paddingValues)
-        ) {
-            when {
-                isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                historyList.isEmpty() -> {
-                    Text(
-                        text = "No driving history yet",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Grey
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(historyList) { item ->
-                            HistoryItemCard(item = item)
-                        }
+            }
+            historyList.isEmpty() -> {
+                android.util.Log.d("HistoryScreen", "📭 History list is empty")
+                Text(
+                    text = "No driving history yet",
+                    modifier = Modifier.align(Alignment.Center),
+                    color = Grey
+                )
+            }
+            else -> {
+                android.util.Log.d("HistoryScreen", "✅ Showing ${historyList.size} history items")
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(historyList) { item ->
+                        HistoryItemCard(item = item)
                     }
                 }
             }

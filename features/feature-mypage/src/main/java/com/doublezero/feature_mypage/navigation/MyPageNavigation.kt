@@ -4,6 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.doublezero.navigation.Screen
 import com.doublezero.feature_mypage.MyPageScreen
+import com.doublezero.feature_mypage.HistoryScreen
 
 fun NavGraphBuilder.myPageScreen(
     onNavigateToHome: () -> Unit,
@@ -18,6 +19,14 @@ fun NavGraphBuilder.myPageScreen(
             onNavigateToSettings = onNavigateToSettings,
             onSearchClick = onSearchClick
         )
+    }
+}
+
+fun NavGraphBuilder.historyScreen(
+    onNavigateBack: () -> Unit
+) {
+    composable<Screen.History> {
+        HistoryScreen(onBackClick = onNavigateBack)
     }
 }
 

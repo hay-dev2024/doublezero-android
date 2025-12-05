@@ -30,7 +30,8 @@ import kotlin.math.sqrt
 class HomeViewModel @Inject constructor(
     private val placesRepository: PlacesRepository,
     private val navigationRepository: NavigationRepository,
-    private val authRepository: com.doublezero.data.repository.AuthRepository
+    private val authRepository: com.doublezero.data.repository.AuthRepository,
+    private val historyRepository: com.doublezero.data.repository.HistoryRepository
 ) : ViewModel() {
 
     data class HomeUiState(
@@ -53,7 +54,9 @@ class HomeViewModel @Inject constructor(
         val riskUpdateCount: Int = 0,
         // Heatmap State: store initial risk points (from route) and dynamic risk points (from SSE)
         val initialRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList(),
-        val dynamicRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList()
+        val dynamicRiskPoints: List<com.doublezero.data.network.RiskPointDto> = emptyList(),
+        // Session tracking for history
+        val sessionStartTime: Long? = null
     )
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -234,10 +237,16 @@ class HomeViewModel @Inject constructor(
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }.format(java.util.Date(currentTimeMillis))
 
+        // Record session start time for history
+        _uiState.update { it.copy(sessionStartTime = currentTimeMillis) }
+
         // DEBUG: Log system time to verify
         android.util.Log.d("HomeVM", "System time (ms): $currentTimeMillis")
         android.util.Log.d("HomeVM", "Formatted startTime: $startTime")
         android.util.Log.d("HomeVM", "Expected current time: ${java.util.Date(currentTimeMillis)}")
+
+        // ✅ Drive 버튼 클릭 시 즉시 주행 기록 저장 (startedAt만)
+        saveHistoryOnStart(currentTimeMillis)
 
         viewModelScope.launch {
             try {
@@ -405,6 +414,14 @@ class HomeViewModel @Inject constructor(
             }
         }
 
+        // Save history if session was active
+        val currentState = _uiState.value
+        if (currentState.sessionStartTime != null &&
+            currentState.selectedOrigin != null &&
+            currentState.selectedDestination != null) {
+            saveHistory()
+        }
+
         _uiState.update {
             it.copy(
                 isSimulating = false,
@@ -415,7 +432,8 @@ class HomeViewModel @Inject constructor(
                 riskMessage = null,
                 riskUrgency = null,
                 riskUpdateCount = 0,
-                dynamicRiskPoints = emptyList()
+                dynamicRiskPoints = emptyList(),
+                sessionStartTime = null
             )
         }
     }
@@ -535,6 +553,114 @@ class HomeViewModel @Inject constructor(
 
         // Fallback to the last point if something goes wrong
         return points.last()
+    }
+
+    /**
+     * Save driving history when starting (Drive button clicked)
+     */
+    private fun saveHistoryOnStart(startTime: Long) {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                val route = currentState.routes.getOrNull(currentState.selectedRouteIndex) ?: return@launch
+                val origin = currentState.selectedOrigin ?: return@launch
+                val destination = currentState.selectedDestination ?: return@launch
+
+                val startTimeIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(java.util.Date(startTime))
+
+                // Parse distance (e.g., "6.1 km" -> 6100)
+                val distanceMeters = route.distance?.let { distStr ->
+                    distStr.split(" ").firstOrNull()?.toDoubleOrNull()?.times(1000)?.toInt()
+                }
+
+                // Parse duration (e.g., "6 min" -> 360)
+                val durationSeconds = route.duration?.let { durStr ->
+                    durStr.split(" ").firstOrNull()?.toIntOrNull()?.times(60)
+                }
+
+                val historyRequest = com.doublezero.data.network.CreateHistoryDto(
+                    origin = com.doublezero.data.network.LatLonDto(origin.lat, origin.lon),
+                    destination = com.doublezero.data.network.LatLonDto(destination.lat, destination.lon),
+                    polyline = route.polyline,
+                    distanceMeters = distanceMeters,
+                    durationSeconds = durationSeconds,
+                    summary = route.summary,
+                    sampleCount = route.riskPoints?.size,
+                    includeRisk = route.riskPoints?.isNotEmpty() == true,
+                    riskSummary = route.riskSummary,
+                    weatherSummary = null,
+                    riskPoints = null,
+                    startedAt = startTimeIso,
+                    endedAt = null  // 아직 종료 안 됨
+                )
+
+                android.util.Log.d("HomeVM", "💾 Saving history on start: origin=${origin.lat},${origin.lon} dest=${destination.lat},${destination.lon}")
+                historyRepository.saveHistory(historyRequest)
+
+                android.util.Log.d("HomeVM", "✅ History saved successfully (start)")
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "❌ Failed to save history on start", e)
+            }
+        }
+    }
+
+    /**
+     * Save driving history to backend (final save with endedAt)
+     */
+    private fun saveHistory() {
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+                val route = currentState.routes.getOrNull(currentState.selectedRouteIndex) ?: return@launch
+                val origin = currentState.selectedOrigin ?: return@launch
+                val destination = currentState.selectedDestination ?: return@launch
+                val startTime = currentState.sessionStartTime ?: return@launch
+
+                val endTime = System.currentTimeMillis()
+                val startTimeIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(java.util.Date(startTime))
+
+                val endTimeIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(java.util.Date(endTime))
+
+                // Parse distance (e.g., "6.1 km" -> 6100)
+                val distanceMeters = route.distance?.let { distStr ->
+                    distStr.split(" ").firstOrNull()?.toDoubleOrNull()?.times(1000)?.toInt()
+                }
+
+                // Parse duration (e.g., "6 min" -> 360)
+                val durationSeconds = route.duration?.let { durStr ->
+                    durStr.split(" ").firstOrNull()?.toIntOrNull()?.times(60)
+                }
+
+                val historyRequest = com.doublezero.data.network.CreateHistoryDto(
+                    origin = com.doublezero.data.network.LatLonDto(origin.lat, origin.lon),
+                    destination = com.doublezero.data.network.LatLonDto(destination.lat, destination.lon),
+                    polyline = route.polyline,
+                    distanceMeters = distanceMeters,
+                    durationSeconds = durationSeconds,
+                    summary = route.summary,
+                    sampleCount = route.riskPoints?.size,
+                    includeRisk = route.riskPoints?.isNotEmpty() == true,
+                    riskSummary = route.riskSummary,
+                    weatherSummary = null,
+                    riskPoints = null,
+                    startedAt = startTimeIso,
+                    endedAt = endTimeIso
+                )
+
+                android.util.Log.d("HomeVM", "Saving history: origin=${origin.lat},${origin.lon} dest=${destination.lat},${destination.lon}")
+                historyRepository.saveHistory(historyRequest)
+
+                android.util.Log.d("HomeVM", "History saved successfully")
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "Failed to save history", e)
+            }
+        }
     }
 
     /**
