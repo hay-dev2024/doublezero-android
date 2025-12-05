@@ -246,7 +246,7 @@ class HomeViewModel @Inject constructor(
         android.util.Log.d("HomeVM", "Expected current time: ${java.util.Date(currentTimeMillis)}")
 
         // ✅ Drive 버튼 클릭 시 즉시 주행 기록 저장 (startedAt만)
-        saveHistoryOnStart(currentTimeMillis)
+        saveHistoryOnStart()
 
         viewModelScope.launch {
             try {
@@ -470,8 +470,6 @@ class HomeViewModel @Inject constructor(
                                 navigationRepository.stopSession(sessionId, token)
                                 throw kotlinx.coroutines.CancellationException("Session ended")
                             } else {
-                                // 🚨 FIX: isSimulating 체크 제거 - 세션이 활성화되어 있으면 항상 히트맵 업데이트
-                                // (시뮬레이션 속도가 빨라서 isSimulating이 false가 되어도 SSE는 계속 받아야 함)
                                 val newPoints = riskUpdate.riskPoints
 
                                 android.util.Log.w(
@@ -558,7 +556,7 @@ class HomeViewModel @Inject constructor(
     /**
      * Save driving history when starting (Drive button clicked)
      */
-    private fun saveHistoryOnStart(startTime: Long) {
+    private fun saveHistoryOnStart() {
         viewModelScope.launch {
             try {
                 val currentState = _uiState.value
@@ -566,9 +564,10 @@ class HomeViewModel @Inject constructor(
                 val origin = currentState.selectedOrigin ?: return@launch
                 val destination = currentState.selectedDestination ?: return@launch
 
+                // ✅ 현재 시간을 UTC로 변환
                 val startTimeIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
                     timeZone = java.util.TimeZone.getTimeZone("UTC")
-                }.format(java.util.Date(startTime))
+                }.format(java.util.Date(System.currentTimeMillis()))
 
                 // Parse distance (e.g., "6.1 km" -> 6100)
                 val distanceMeters = route.distance?.let { distStr ->
@@ -583,6 +582,8 @@ class HomeViewModel @Inject constructor(
                 val historyRequest = com.doublezero.data.network.CreateHistoryDto(
                     origin = com.doublezero.data.network.LatLonDto(origin.lat, origin.lon),
                     destination = com.doublezero.data.network.LatLonDto(destination.lat, destination.lon),
+                    originName = origin.name,  // ✅ Google Places API에서 선택한 장소 이름 사용
+                    destinationName = destination.name,  // ✅ Google Places API에서 선택한 장소 이름 사용
                     polyline = route.polyline,
                     distanceMeters = distanceMeters,
                     durationSeconds = durationSeconds,
@@ -596,7 +597,7 @@ class HomeViewModel @Inject constructor(
                     endedAt = null  // 아직 종료 안 됨
                 )
 
-                android.util.Log.d("HomeVM", "💾 Saving history on start: origin=${origin.lat},${origin.lon} dest=${destination.lat},${destination.lon}")
+                android.util.Log.d("HomeVM", "💾 Saving history on start: ${origin.name} -> ${destination.name}")
                 historyRepository.saveHistory(historyRequest)
 
                 android.util.Log.d("HomeVM", "✅ History saved successfully (start)")
@@ -640,6 +641,8 @@ class HomeViewModel @Inject constructor(
                 val historyRequest = com.doublezero.data.network.CreateHistoryDto(
                     origin = com.doublezero.data.network.LatLonDto(origin.lat, origin.lon),
                     destination = com.doublezero.data.network.LatLonDto(destination.lat, destination.lon),
+                    originName = origin.name,
+                    destinationName = destination.name,
                     polyline = route.polyline,
                     distanceMeters = distanceMeters,
                     durationSeconds = durationSeconds,
@@ -653,7 +656,7 @@ class HomeViewModel @Inject constructor(
                     endedAt = endTimeIso
                 )
 
-                android.util.Log.d("HomeVM", "Saving history: origin=${origin.lat},${origin.lon} dest=${destination.lat},${destination.lon}")
+                android.util.Log.d("HomeVM", "Saving history: ${origin.name} -> ${destination.name}")
                 historyRepository.saveHistory(historyRequest)
 
                 android.util.Log.d("HomeVM", "History saved successfully")

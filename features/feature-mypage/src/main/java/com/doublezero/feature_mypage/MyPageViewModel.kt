@@ -96,11 +96,16 @@ class MyPageViewModel @Inject constructor(
                 result.onSuccess { items ->
                     Log.d(TAG, "loadHistory: success, ${items.size} items")
 
-                    // Convert lat/lon to location names using Geocoder
+                    // ✅ Use place names directly from backend (already set in HistoryRepositoryImpl)
+                    // If originName/destinationName are null, fall back to Geocoding
                     val itemsWithNames = items.map { item ->
                         item.apply {
-                            originName = getLocationName(originLat, originLon)
-                            destinationName = getLocationName(destinationLat, destinationLon)
+                            if (originName.isNullOrBlank()) {
+                                originName = getLocationName(originLat, originLon)
+                            }
+                            if (destinationName.isNullOrBlank()) {
+                                destinationName = getLocationName(destinationLat, destinationLon)
+                            }
                         }
                     }
 
@@ -122,12 +127,27 @@ class MyPageViewModel @Inject constructor(
 
             if (!addresses.isNullOrEmpty()) {
                 val address = addresses[0]
-                // Try to get the most specific location name
-                address.locality ?: // City name (e.g., "Manhattan")
-                address.subAdminArea ?: // County/District
-                address.adminArea ?: // State/Province
-                address.countryName ?: // Country
-                formatLatLon(lat, lon) // Fallback to coordinates
+
+                // Try to build a more specific location name
+                // Priority: thoroughfare (street) + subLocality (neighborhood), or just subLocality
+                val thoroughfare = address.thoroughfare // Street name (e.g., "5th Avenue", "Central Park West")
+                val subLocality = address.subLocality // Neighborhood (e.g., "Upper West Side", "Harlem")
+                val locality = address.locality // City name (e.g., "New York")
+
+                // Build location name with priority:
+                // 1. Street name if available (most specific)
+                // 2. Neighborhood/SubLocality
+                // 3. City
+                when {
+                    !thoroughfare.isNullOrBlank() && !subLocality.isNullOrBlank() -> {
+                        // e.g., "5th Ave, Upper East Side"
+                        "$thoroughfare, $subLocality"
+                    }
+                    !thoroughfare.isNullOrBlank() -> thoroughfare
+                    !subLocality.isNullOrBlank() -> subLocality
+                    !locality.isNullOrBlank() -> locality
+                    else -> formatLatLon(lat, lon)
+                }
             } else {
                 formatLatLon(lat, lon)
             }

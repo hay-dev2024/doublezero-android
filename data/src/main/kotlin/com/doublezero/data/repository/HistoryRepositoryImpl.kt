@@ -109,7 +109,9 @@ class HistoryRepositoryImpl @Inject constructor(
                             riskLevel = dto.riskSummary?.level,
                             startedAt = dto.startedAt,
                             endedAt = dto.endedAt,
-                            createdAt = dto.createdAt
+                            createdAt = dto.createdAt,
+                            originName = dto.originName,  // ✅ Use place name from backend
+                            destinationName = dto.destinationName  // ✅ Use place name from backend
                         )
                     }
                     Log.d(TAG, "getHistory: success, ${historyList.size} items")
