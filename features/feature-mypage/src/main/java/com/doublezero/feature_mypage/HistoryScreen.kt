@@ -102,7 +102,7 @@ private fun HistoryItemCard(item: HistoryItem) {
                         color = Grey
                     )
                     Text(
-                        text = formatLatLon(item.originLat, item.originLon),
+                        text = item.originName ?: formatLatLon(item.originLat, item.originLon),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -120,7 +120,7 @@ private fun HistoryItemCard(item: HistoryItem) {
                         color = Grey
                     )
                     Text(
-                        text = formatLatLon(item.destinationLat, item.destinationLon),
+                        text = item.destinationName ?: formatLatLon(item.destinationLat, item.destinationLon),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold
                     )

@@ -12,6 +12,9 @@ data class HistoryItem(
     val riskLevel: String?,
     val startedAt: String?,
     val endedAt: String?,
-    val createdAt: String
+    val createdAt: String,
+    // Computed properties for display names
+    var originName: String? = null,
+    var destinationName: String? = null
 )
 
