@@ -1,252 +1,256 @@
 package com.doublezero.feature_mypage
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import com.doublezero.core.ui.color.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.doublezero.data.model.Trip
-import com.doublezero.core.ui.utils.getRiskColor
+import com.doublezero.core.ui.color.*
+import com.doublezero.data.model.HistoryItem
+import java.text.SimpleDateFormat
+import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    onBackClicked: () -> Unit,
-    viewModel: HistoryViewModel = hiltViewModel()
+    onBackClick: () -> Unit,
+    viewModel: MyPageViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var expandedTripId by remember { mutableStateOf<Int?>(null) }
+    val historyList by viewModel.historyList.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoadingHistory.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
+    // Load history when screen is shown
+    LaunchedEffect(Unit) {
+        viewModel.loadHistory(50)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Driving History") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BrightWhite)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(paddingValues)
         ) {
-            items(uiState.trips, key = { it.id }) { trip ->
-                TripItem(
-                    trip = trip,
-                    isExpanded = expandedTripId == trip.id,
-                    onClick = {
-                        expandedTripId = if (expandedTripId == trip.id) null else trip.id
+            when {
+                isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                historyList.isEmpty() -> {
+                    Text(
+                        text = "No driving history yet",
+                        modifier = Modifier.align(Alignment.Center),
+                        color = Grey
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(historyList) { item ->
+                            HistoryItemCard(item = item)
+                        }
                     }
-                )
-            }
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+                }
             }
         }
+    }
+}
 
-        // 테스트용 샘플 추가 버튼
-        androidx.compose.material3.FloatingActionButton(
-            onClick = { viewModel.addSampleTrip() },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            containerColor = DarkGreen
+@Composable
+private fun HistoryItemCard(item: HistoryItem) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Origin and Destination
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "From",
+                        fontSize = 12.sp,
+                        color = Grey
+                    )
+                    Text(
+                        text = formatLatLon(item.originLat, item.originLon),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    text = "→",
+                    fontSize = 20.sp,
+                    color = Blue,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "To",
+                        fontSize = 12.sp,
+                        color = Grey
+                    )
+                    Text(
+                        text = formatLatLon(item.destinationLat, item.destinationLon),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            HorizontalDivider(color = SomewhatGrey.copy(alpha = 0.3f), thickness = 1.dp)
+
+            // Distance and Duration
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                item.distanceMeters?.let { distance ->
+                    Column {
+                        Text(
+                            text = "Distance",
+                            fontSize = 12.sp,
+                            color = Grey
+                        )
+                        Text(
+                            text = formatDistance(distance),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                item.durationSeconds?.let { duration ->
+                    Column {
+                        Text(
+                            text = "Duration",
+                            fontSize = 12.sp,
+                            color = Grey
+                        )
+                        Text(
+                            text = formatDuration(duration),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Risk Summary
+            item.riskLevel?.let { level ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = when (level.lowercase()) {
+                                "high" -> ReddishWhite
+                                "medium" -> WarmishWhite
+                                else -> BlueishWhite
+                            },
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Risk Level:",
+                        fontSize = 12.sp,
+                        color = Grey
+                    )
+                    Text(
+                        text = level,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when (level.lowercase()) {
+                            "high" -> Red
+                            "medium" -> Orange
+                            else -> Blue
+                        }
+                    )
+                }
+            }
+
+            // Timestamp
             Text(
-                text = "+ 샘플",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
+                text = formatTimestamp(item.createdAt),
+                fontSize = 11.sp,
+                color = SomewhatGrey
             )
         }
     }
 }
 
-@Composable
-private fun TripItem(
-    trip: Trip,
-    isExpanded: Boolean,
-    onClick: () -> Unit
-) {
-    val riskStyle = getRiskColor(trip.risk)
-    val cornerShape = RoundedCornerShape(12.dp)
+private fun formatLatLon(lat: Double, lon: Double): String {
+    return "(${String.format(Locale.US, "%.4f", lat)}, ${String.format(Locale.US, "%.4f", lon)})"
+}
 
-    Card(
-        shape = cornerShape,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Text(
-                    text = "${trip.date} · ${trip.time}",
-                    fontSize = 14.sp,
-                    color = Grey
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(riskStyle.bg)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = riskStyle.label,
-                            color = riskStyle.text,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        modifier = Modifier.size(20.dp),
-                        tint = SomewhatGrey
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                RouteInfoRow(
-                    icon = Icons.Default.LocationOn,
-                    text = trip.origin,
-                    iconTint = DarkGreen
-                )
-                RouteInfoRow(
-                    icon = Icons.Default.LocationOn,
-                    text = trip.destination,
-                    iconTint = Red
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                StatInfoRow(
-                    icon = Icons.Default.Map,
-                    text = trip.distance
-                )
-                StatInfoRow(
-                    icon = Icons.Default.Schedule,
-                    text = trip.duration
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = fadeIn(tween(100)) + expandVertically(tween(200)),
-            exit = fadeOut(tween(200)) + shrinkVertically(tween(200))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "AI Risk Summary",
-                    tint = riskStyle.text,
-                    modifier = Modifier
-                        .size(16.dp)
-                        .padding(top = 2.dp)
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "AI Risk Summary",
-                        fontSize = 12.sp,
-                        color = Grey
-                    )
-                    Text(
-                        text = trip.riskDetails,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
+private fun formatDistance(meters: Int): String {
+    return if (meters >= 1000) {
+        String.format(Locale.US, "%.1f km", meters / 1000.0)
+    } else {
+        "$meters m"
     }
 }
 
-@Composable
-private fun RouteInfoRow(icon: ImageVector, text: String, iconTint: Color) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(text = text, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+private fun formatDuration(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    return when {
+        hours > 0 -> "${hours}h ${minutes}m"
+        else -> "${minutes}m"
     }
 }
 
-@Composable
-private fun StatInfoRow(icon: ImageVector, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Grey,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(text = text, fontSize = 13.sp, color = Grey)
+private fun formatTimestamp(timestamp: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val date = inputFormat.parse(timestamp)
+
+        val outputFormat = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+        date?.let { outputFormat.format(it) } ?: timestamp
+    } catch (e: Exception) {
+        timestamp
     }
 }
 
-
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
-@Composable
-private fun HistoryScreenPreview() {
-    MaterialTheme {
-        HistoryScreen(onBackClicked = {})
-    }
-}

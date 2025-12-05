@@ -194,8 +194,7 @@ class NavigationRepositoryImpl @Inject constructor() : NavigationRepository {
                                                 maxWeight = 0.0,
                                                 hotspotCount = 0,
                                                 hotspotThreshold = 0.0,
-                                                message = "Destination reached - Navigation complete",
-                                                urgency = "low"
+                                                message = "Destination reached - Navigation complete"
                                             )
                                         )
                                         trySend(endMarker)

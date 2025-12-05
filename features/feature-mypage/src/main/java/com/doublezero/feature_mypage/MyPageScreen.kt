@@ -181,11 +181,18 @@ fun MyPageScreen(
                 .build()
 
             val client = GoogleSignIn.getClient(context, gso)
-            ㄱ
+            
             client.signOut().addOnCompleteListener {
                 Log.d(TAG, "onLoginClick: signed out, launching signInIntent with client=$client")
                 googleSignInLauncher.launch(client.signInIntent)
             }
+        }
+    }
+
+    // Load history when user logs in
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn) {
+            viewModel.loadHistory()
         }
     }
 

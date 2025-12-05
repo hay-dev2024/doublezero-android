@@ -50,7 +50,7 @@ fun AppNavHost(
         )
 
         composable<Screen.History> {
-            HistoryScreen(onBackClicked = { navController.popBackStack() })
+            HistoryScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable<Screen.Settings> {

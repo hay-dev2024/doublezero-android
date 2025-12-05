@@ -8,6 +8,8 @@ import com.doublezero.data.repository.NavigationRepository
 import com.doublezero.data.repository.NavigationRepositoryImpl
 import com.doublezero.data.repository.PlacesRepository
 import com.doublezero.data.repository.PlacesRepositoryImpl
+import com.doublezero.data.repository.HistoryRepository
+import com.doublezero.data.repository.HistoryRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -41,4 +43,10 @@ abstract class DataModule {
     abstract fun bindPlacesRepository(
         impl: PlacesRepositoryImpl
     ): PlacesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHistoryRepository(
+        impl: HistoryRepositoryImpl
+    ): HistoryRepository
 }

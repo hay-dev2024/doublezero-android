@@ -16,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val historyRepository: com.doublezero.data.repository.HistoryRepository
 ) : ViewModel() {
 
     private val TAG = "MyPageViewModel"
@@ -42,6 +43,12 @@ class MyPageViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = MyPageUiState()
     )
+
+    private val _historyList = kotlinx.coroutines.flow.MutableStateFlow<List<com.doublezero.data.model.HistoryItem>>(emptyList())
+    val historyList: StateFlow<List<com.doublezero.data.model.HistoryItem>> = _historyList
+
+    private val _isLoadingHistory = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory
 
     fun onGoogleLoginSuccess(idToken: String) {
         Log.d(TAG, "onGoogleLoginSuccess: received idToken length=${idToken.length}")
@@ -71,6 +78,25 @@ class MyPageViewModel @Inject constructor(
     fun onLogout() {
         viewModelScope.launch {
             authRepository.logout()
+        }
+    }
+
+    fun loadHistory(limit: Int = 20) {
+        viewModelScope.launch {
+            _isLoadingHistory.value = true
+            try {
+                Log.d(TAG, "loadHistory: fetching history with limit=$limit")
+                val result = historyRepository.getHistory(limit)
+                result.onSuccess { items ->
+                    Log.d(TAG, "loadHistory: success, ${items.size} items")
+                    _historyList.value = items
+                }.onFailure { error ->
+                    Log.e(TAG, "loadHistory: failed", error)
+                    _historyList.value = emptyList()
+                }
+            } finally {
+                _isLoadingHistory.value = false
+            }
         }
     }
 }
